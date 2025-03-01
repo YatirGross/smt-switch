@@ -258,6 +258,20 @@ if (BUILD_Z3)
   set(SOLVER_BACKEND_LIBS ${SOLVER_BACKEND_LIBS} smt-switch-z3)
 endif (BUILD_Z3)
 
+option (BUILD_STP
+  "Should we build the libraries for STP" OFF)
+
+if (BUILD_STP)
+  if (NOT DEFINED STP_HOME)
+    set(STP_HOME "${PROJECT_SOURCE_DIR}/deps/stp")
+  endif()
+  add_subdirectory (stp)
+  set (SOLVER_BACKEND_LIBS ${SOLVER_BACKEND_LIBS} smt-switch-stp)
+
+  add_definitions(-DBUILD_STP)
+  add_definitions(-DSTP_HOME=${STP_HOME})
+endif (BUILD_STP)
+
 if (BUILD_PYTHON_BINDINGS)
   add_subdirectory(python)
 endif()

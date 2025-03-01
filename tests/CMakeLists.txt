@@ -31,6 +31,8 @@ target_link_libraries(test-deps PUBLIC smt-switch)
 target_link_libraries(test-deps PRIVATE ${SOLVER_BACKEND_LIBS})
 target_link_libraries(test-deps PRIVATE GTest::gmock)
 
+
+
 # add solver-specific test directories
 
 if (BUILD_BITWUZLA)
@@ -47,6 +49,10 @@ endif()
 
 if (BUILD_MSAT)
   add_subdirectory(msat)
+endif()
+
+if (BUILD_STP)
+  add_subdirectory(stp)
 endif()
 
 if (BUILD_YICES2)
@@ -93,3 +99,4 @@ if (SMTLIB_READER)
 endif()
 
 add_subdirectory(unit)
+

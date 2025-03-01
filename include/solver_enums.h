@@ -32,6 +32,7 @@ enum SolverEnum
   CVC5,            // cvc5
   GENERIC_SOLVER,  // generic solver (binary)
   MSAT,            // mathsat
+  STP,             // stp
   YICES2,          // yices2
   Z3,              // z3
 

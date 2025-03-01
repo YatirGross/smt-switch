@@ -42,6 +42,10 @@
 #include "msat_factory.h"
 #endif
 
+#if BUILD_STP
+#include "stp_factory.h"
+#endif
+
 #if BUILD_YICES2
 #include "yices2_factory.h"
 #endif
@@ -71,6 +75,11 @@ const std::vector<SolverEnum> solver_enums({
 #if BUILD_MSAT
     MSAT,
 #endif
+
+#if BUILD_STP
+      STP,
+#endif
+
 #if BUILD_YICES2
     YICES2,
 #endif
@@ -127,6 +136,13 @@ SmtSolver create_solver(SolverConfiguration sc)
     case MSAT: {
       return MsatSolverFactory::create(logging);
       break;
+    }
+#endif
+#if BUILD_STP
+    case STP: {
+      return StpSolverFactory::create(logging);
+      break;
+      ;
     }
 #endif
 #if BUILD_YICES2
