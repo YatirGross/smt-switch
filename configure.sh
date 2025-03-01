@@ -16,6 +16,7 @@ Configures the CMAKE build environment.
 --bitwuzla              build bitwuzla            (default: off)
 --cvc5                  build cvc5              (default: off)
 --msat                  build MathSAT           (default: off)
+--stp                   build stp               (default: off)
 --yices2                build yices2            (default: off)
 --z3                    build z3                (default: off)
 --btor-home=STR         custom BTOR location    (default: deps/boolector)
@@ -51,11 +52,13 @@ build_btor=default
 build_bitwuzla=default
 build_cvc5=default
 build_msat=default
+build_stp=defualt
 build_yices2=default
 build_z3=default
 btor_home=default
 cvc5_home=default
 msat_home=default
+stp_home=default
 yices2_home=default
 z3_home=default
 static=default
@@ -100,6 +103,9 @@ do
         --msat)
             build_msat=ON
             ;;
+        --stp)
+            build_stp=ON
+            ;;
         --z3)
             build_z3=ON
             ;;
@@ -131,6 +137,16 @@ do
             case $msat_home in
                 /*) ;;                                      # absolute path
                 *) msat_home=$(pwd)/$msat_home ;; # make absolute path
+            esac
+            ;;
+        --stp-home) die "missing argument to $1 (see -h)" ;;
+        --stp-home=*)
+            stp_home=${1##*=}
+            # Check if stp_home is an absolute path and if not, make it
+            # absolute.
+            case $stp_home in
+                /*) ;;                                      # absolute path
+                *) stp_home=$(pwd)/$stp_home ;; # make absolute path
             esac
             ;;
         --z3-home) die "missing argument to $1 (see -h)" ;;
@@ -224,6 +240,10 @@ if [ $msat_home != default -a $build_msat = default ]; then
     build_msat=ON
 fi
 
+if [ $stp_home != default -a $build_stp = default ]; then
+    build_stp=ON
+fi
+
 if [ $z3_home != default -a $build_z3 = default ]; then
     build_z3=ON
 fi
@@ -249,6 +269,9 @@ cmake_opts="$cmake_opts -DCMAKE_BUILD_TYPE=$build_type"
 [ $build_msat != default ] \
     && cmake_opts="$cmake_opts -DBUILD_MSAT=$build_msat"
 
+[ $build_stp != default ] \
+    && cmake_opts="$cmake_opts -DBUILD_STP=$build_stp"
+
 [ $build_z3 != default ] \
     && cmake_opts="$cmake_opts -DBUILD_Z3=$build_z3"
 
@@ -263,6 +286,9 @@ cmake_opts="$cmake_opts -DCMAKE_BUILD_TYPE=$build_type"
 
 [ $msat_home != default ] \
     && cmake_opts="$cmake_opts -DMSAT_HOME=$msat_home"
+
+[ $stp_home != default ] \
+    && cmake_opts="$cmmake_opts -DSTP_HOME=$stp_home"
 
 [ $z3_home != default ] \
     && cmake_opts="$cmake_opts -DZ3_HOME=$z3_home"

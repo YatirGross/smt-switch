@@ -108,6 +108,10 @@ cdef SolverEnum YICES2 = SolverEnum()
 YICES2.se = c_YICES2
 setattr(solverenums, 'YICES2', YICES2)
 
+cdef SolverEnum STP = SolverEnum()
+STP.se = c_STP
+setattr(solverenums, 'STP', STP)
+
 cdef SolverEnum MSAT_INTERPOLATOR = SolverEnum()
 MSAT_INTERPOLATOR.se = c_MSAT_INTERPOLATOR
 setattr(solverenums, "MSAT_INTERPOLATOR", MSAT_INTERPOLATOR)

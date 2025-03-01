@@ -30,6 +30,7 @@ cdef extern from "solver_enums.h" namespace "smt":
     cdef c_SolverEnum c_BTOR "smt::BTOR"
     cdef c_SolverEnum c_CVC5 "smt::CVC5"
     cdef c_SolverEnum c_MSAT "smt::MSAT"
+    cdef c_SolverEnum c_STP "smt::STP"
     cdef c_SolverEnum c_YICES2 "smt::YICES2"
     cdef c_SolverEnum c_MSAT_INTERPOLATOR "smt::MSAT_INTERPOLATOR"
     cdef c_SolverEnum c_CVC5_INTERPOLATOR "smt::CVC5_INTERPOLATOR"

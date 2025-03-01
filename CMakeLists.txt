@@ -222,6 +222,20 @@ if (BUILD_YICES2)
   add_definitions(-DYICES2_HOME=${YICES2_HOME})
 endif (BUILD_YICES2)
 
+option (BUILD_STP
+  "Should we build the libraries for STP" OFF)
+
+if (BUILD_STP)
+  if (NOT DEFINED STP_HOME)
+    set(STP_HOME "${PROJECT_SOURCE_DIR}/deps/stp")
+  endif()
+  add_subdirectory (stp)
+  set (SOLVER_BACKEND_LIBS ${SOLVER_BACKEND_LIBS} smt-switch-stp)
+
+  add_definitions(-DBUILD_STP)
+  add_definitions(-DSTP_HOME=${STP_HOME})
+endif (BUILD_STP)
+
 if (BUILD_PYTHON_BINDINGS)
   add_subdirectory(python)
 endif()

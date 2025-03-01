@@ -27,9 +27,9 @@ enum SolverEnum
   BZLA,      // bitwuzla
   CVC5,      // cvc5
   MSAT,      // mathsat
+  STP,       // stp
   YICES2,    // yices2
   Z3,        // z3
-
   // interpolating solvers -- note these cannot be logging solvers
   // because the solver takes the initiative in creating the interpolant
   // so there's no way to keep a DAG at the smt-switch level
