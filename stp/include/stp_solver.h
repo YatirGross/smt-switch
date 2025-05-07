@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "stp/cpp_interface.h"
+#include "stp/c_interface.h"
 #include "solver.h"
 #include "stp_sort.h"
 #include "stp_term.h"
@@ -66,10 +66,9 @@ class StpSolver : public AbsSmtSolver
   Term get_tester(const Sort & s, std::string name) const override;
   Term get_selector(const Sort & s, std::string con, std::string name) const override;
 
+  friend class StpSort;
  private:
-  stp::STPMgr* stp_mgr;
-  stp::Cpp_interface* stp_interface;
-  std::unordered_map<std::string, Term> symbol_table;
+  VC vc;
   uint64_t context_level;
 };
 

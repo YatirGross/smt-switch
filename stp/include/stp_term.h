@@ -11,7 +11,7 @@ class StpSolver;
 class StpTermIter : public TermIterBase
 {
  public:
-  StpTermIter(const ASTVec& n, uint32_t p = 0) : children(n), pos(p) {};
+  StpTermIter(Expr e, VC vc, uint32_t pos = 0) : expr(e), vc(vc), pos(pos) {};
   StpTermIter(const StpTermIter & it);
   ~StpTermIter() {};
   void operator++() override;
@@ -23,14 +23,15 @@ class StpTermIter : public TermIterBase
   bool equal(const TermIterBase & other) const override;
 
  private:
-  const ASTVec& children;
+  Expr expr;
+  VC vc;
   uint32_t pos;
 };
 
 class StpTerm : public AbsTerm
 {
  public:
-  StpTerm(const Expr e) : expr(e) {};
+  StpTerm(const Expr e, VC vc) : expr(e), vc(vc) {};
   ~StpTerm() {};
   std::size_t hash() const override;
   std::size_t get_id() const override;
@@ -49,6 +50,7 @@ class StpTerm : public AbsTerm
 
  protected:
   Expr expr;
+  VC vc;
 
   friend class StpSolver;
 };

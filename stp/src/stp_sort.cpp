@@ -5,34 +5,32 @@ namespace smt {
 
 std::size_t StpSort::hash() const
 {
-  return static_cast<std::size_t>(sk);
+  return reinterpret_cast<size_t>(type);
 }
 
 uint64_t StpSort::get_width() const
 {
-  if (kind2sortKind.at(sk) != BV)
-  {
-    throw IncorrectUsageException("get_width called on a non-bitvector sort");
-  }
-  return width;
+  return vc_getValueSize(vc, type);
 }
 
 Sort StpSort::get_indexsort() const
 {
-  if (kind2sortKind.at(sk) != ARRAY)
+  if (type2sortKind.at(getType(type)) != ARRAY)
   {
     throw IncorrectUsageException("get_indexsort called on a non-array sort");
   }
-  return index_sort;
+  Type index_type = vc_bvType(vc, vc_getIndexSize(vc, type));
+  return std::make_shared<StpSort>(index_type, vc);
 }
 
 Sort StpSort::get_elemsort() const
 {
-  if (kind2sortKind.at(sk) != ARRAY)
+  if (type2sortKind.at(getType(type)) != ARRAY)
   {
     throw IncorrectUsageException("get_elemsort called on a non-array sort");
   }
-  return elem_sort;
+  Type elem_type = vc_bvType(vc, vc_getValueSize(vc, type));
+  return std::make_shared<StpSort>(elem_type, vc);
 }
 
 std::vector<Sort> StpSort::get_domain_sorts() const
@@ -52,17 +50,7 @@ std::string StpSort::get_uninterpreted_name() const
 
 size_t StpSort::get_arity() const
 {
-  switch (kind2sortKind.at(sk))
-  {
-    case ARRAY:
-      return 2;
-    case BV:
-      return 1;
-    case BOOL:
-      return 0;
-    default:
-      throw IncorrectUsageException("Unknown sort kind");
-  }
+  throw NotImplementedException("get_arity not supported for STP");
 }
 
 std::vector<Sort> StpSort::get_uninterpreted_param_sorts() const
@@ -77,22 +65,16 @@ Datatype StpSort::get_datatype() const
 
 bool StpSort::compare(const Sort & sort) const
 {
-  bool ret = kind2sortKind.at(sk) == sort->get_sort_kind();
-  if (ret && kind2sortKind.at(sk) == BV)
-  {
-    ret = width == std::static_pointer_cast<StpSort>(sort)->width;
-  }
-  if (ret && kind2sortKind.at(sk) == ARRAY)
-  {
-    ret = ret && index_sort == std::static_pointer_cast<StpSort>(sort)->index_sort;
-    ret = ret && elem_sort == std::static_pointer_cast<StpSort>(sort)->elem_sort;
-  }
-  return ret;
+  Type other = std::static_pointer_cast<StpSort>(sort)->type;
+  return getType(type) == getType(other)
+         && vc_getValueSize(vc, type) == vc_getValueSize(vc, other)
+         && vc_getIndexSize(vc, type) == vc_getIndexSize(vc, other);
 }
 
 SortKind StpSort::get_sort_kind() const
 {
-  return kind2sortKind.at(sk);
+  Expr e = vc_varExpr(vc, "tmp", type);
+  return type2sortKind.at(getType(e));
 }
 
 }  // namespace smt

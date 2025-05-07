@@ -1,28 +1,27 @@
 #pragma once
 
 #include "sort.h"
-#include "stp/cpp_interface.h"
+#include "stp/c_interface.h"
 #include <unordered_map>
 
 namespace smt {
 
-const std::unordered_map<::stp::Kind, SortKind> kind2sortKind(
-    { { ::stp::Kind::ARRAY, ARRAY },
-      { ::stp::Kind::BITVECTOR, BV },
-      { ::stp::Kind::BOOLEAN, BOOL }
+const std::unordered_map<type_t, SortKind> type2sortKind(
+    { { BOOLEAN_TYPE, BOOL },
+      { BITVECTOR_TYPE, BV },
+      { ARRAY_TYPE, ARRAY }
     } );
 
-const std::unordered_map<SortKind, ::stp::Kind> sortKind2kind(
-    { { ARRAY, ::stp::Kind::ARRAY },
-      { BV, ::stp::Kind::BITVECTOR },
-      { BOOL, ::stp::Kind::BOOLEAN }
+const std::unordered_map<SortKind, type_t> sortKind2type(
+    { { BOOL, BOOLEAN_TYPE },
+      { BV, BITVECTOR_TYPE },
+      { ARRAY, ARRAY_TYPE }
     } );
 
 class StpSort : public AbsSort
 {
  public:
-  StpSort(::stp::Kind sk, uint64_t width = 0, Sort index_sort = nullptr, Sort elem_sort = nullptr)
-      : sk(sk), width(width), index_sort(index_sort), elem_sort(elem_sort){};
+  StpSort(Type t, VC vc) : type(t), vc(vc) {};
   ~StpSort() override = default;
 
   std::size_t hash() const override;
@@ -39,10 +38,8 @@ class StpSort : public AbsSort
   SortKind get_sort_kind() const override;
 
  protected:
-  ::stp::Kind sk;
-  uint64_t width = 0;
-  Sort index_sort = nullptr;
-  Sort elem_sort = nullptr;
+  Type type;
+  VC vc;
 
   friend class StpSolver;
 };
