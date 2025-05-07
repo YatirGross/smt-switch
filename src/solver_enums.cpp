@@ -77,6 +77,13 @@ const std::unordered_map<SolverEnum, std::unordered_set<SolverAttribute>>
             UNSAT_CORE,
             QUANTIFIERS,
             UNINTERP_SORT } },
+
+        { STP,
+          { TERMITER,
+            THEORY_BV,
+            ARRAY_MODELS,
+            CONSTARR } },
+
         // TODO: Yices2 should support UNSAT_CORE
         //       but something funky happens with testing
         //       has something to do with the context and yices_init
@@ -140,6 +147,7 @@ std::ostream & operator<<(std::ostream & o, SolverEnum e)
     case CVC5: o << "CVC5"; break;
     case GENERIC_SOLVER: o << "GENERIC_SOLVER"; break;
     case MSAT: o << "MSAT"; break;
+    case STP: o << "STP"; break;
     case YICES2: o << "YICES2"; break;
     case Z3: o << "Z3"; break;
     case BZLA_INTERPOLATOR: o << "BZLA_INTERPOLATOR"; break;

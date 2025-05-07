@@ -23,18 +23,15 @@ int main()
   Term y = solver->make_symbol("y", bvsort8);
   Term three = solver->make_term(3, bvsort8);
 
-  // Create a Boolean variable
-  Term b = solver->make_symbol("b", boolsort);
-
   // Define constraints
   Term x_plus_y = solver->make_term(BVAdd, x, y);             // x + y
   Term constraint1 = solver->make_term(Equal, x_plus_y, three);   // x + y == 3
-  Term constraint2 = solver->make_term(BVUge, x, y); // x >= y
-  Term constraint3 = solver->make_term(Implies, b, constraint2); // b == x >= y
+  Term constraint2 = solver->make_term(Equal, x, y); // x == y
   
+
   // Assert the constraints to the solver
   solver->assert_formula(constraint1);
-  solver->assert_formula(constraint3);
+  solver->assert_formula(constraint2);
 
   // Check satisfiability
   Result result = solver->check_sat();
@@ -44,10 +41,8 @@ int main()
 	  // Get the value of x
     Term x_val = solver->get_value(x);
     Term y_val = solver->get_value(y);
-    Term b_val = solver->get_value(b);
     cout << "x = " << x_val->to_int() << endl;
     cout << "y = " << y_val->to_int() << endl;
-    cout << "b = " << b_val->to_int() << endl;
   } else if (result.is_unsat()) {
 	  cout << "UNSAT" << endl;
   } else {

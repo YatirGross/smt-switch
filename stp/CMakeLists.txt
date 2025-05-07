@@ -1,5 +1,7 @@
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+find_library(LIBRT rt)
+
 add_library(smt-switch-stp "${SMT_SWITCH_LIB_TYPE}"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/stp_factory.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/stp_solver.cpp"
@@ -7,11 +9,17 @@ add_library(smt-switch-stp "${SMT_SWITCH_LIB_TYPE}"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/stp_term.cpp"
   )
 
-target_include_directories(smt-switch-stp PUBLIC "${PROJECT_SOURCE_DIR}/include")
-target_include_directories(smt-switch-stp PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories (smt-switch-stp PUBLIC "${PROJECT_SOURCE_DIR}/include")
+target_include_directories (smt-switch-stp PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories (smt-switch-stp PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/stp/include")
 target_include_directories (smt-switch-stp PUBLIC "${STP_HOME}/lib")
-target_include_directories(smt-switch-stp PUBLIC "${STP_HOME}/include")
-target_include_directories(smt-switch-stp PUBLIC "${STP_HOME}/build/include")
+target_include_directories (smt-switch-stp PUBLIC "${STP_HOME}/include")
+target_include_directories (smt-switch-stp PUBLIC "${STP_HOME}/build/include")
+target_include_directories (smt-switch-stp PUBLIC ${GMP_INCLUDE_DIR})
+
+if (LIBRT)
+  target_link_libraries(smt-switch-stp ${LIBRT})
+endif()
 
 target_link_libraries(smt-switch-stp stp)
 target_link_libraries(smt-switch-stp smt-switch)
@@ -39,21 +47,21 @@ target_link_libraries(smt-switch-stp "${MINISAT_LIB}")
 target_link_libraries(smt-switch-stp "${CRYPTOMINISAT_LIB}")
 target_link_libraries(smt-switch-stp "${CADIBACK_LIB}")
 target_link_libraries(smt-switch-stp "${CADICAL}")
+target_link_libraries(smt-switch-stp ${GMP_LIBRARIES})
 
 if (SMT_SWITCH_LIB_TYPE STREQUAL STATIC)
-  # we want the static library to include the STP source
-  # we need to unpack and repack the libraries
+  # we want the static library to include the stp source and dependencies (except GMP)
+  # use libtool to combine
   add_custom_command(
     OUTPUT static-smt-switch-stp.stamp
     COMMAND
-      mkdir smt-switch-stp-working && cd smt-switch-stp-working &&
+      mkdir ssc-working && cd ssc-working &&
       # create new static library that combines them all
-      ${PROJECT_SOURCE_DIR}/scripts/repack-static-lib.sh "$<TARGET_FILE_NAME:smt-switch-stp>"
-        "${STP_LIBRARY}" &&
+      ${PROJECT_SOURCE_DIR}/scripts/repack-static-lib.sh "$<TARGET_FILE_NAME:smt-switch-stp>" "${MINISAT_LIB}" "${CRYPTOMINISAT_LIB}" "${CADIBACK_LIB}" "${CADICAL}" "../$<TARGET_FILE_NAME:smt-switch-stp>" &&
       # replace the original one
       mv "$<TARGET_FILE_NAME:smt-switch-stp>" "../$<TARGET_FILE_NAME:smt-switch-stp>" &&
-      # now clean up
-      cd .. && rm -rf smt-switch-stp-working
+      # now clean up the temporary directory
+      cd ../ && rm -rf ssc-working
     COMMAND ${CMAKE_COMMAND} -E touch static-smt-switch-stp.stamp
     DEPENDS
       smt-switch-stp
@@ -61,10 +69,9 @@ if (SMT_SWITCH_LIB_TYPE STREQUAL STATIC)
     VERBATIM
     )
 
-  add_custom_target(repack-stp-static-lib
-    ALL
-    DEPENDS
-      static-smt-switch-stp.stamp
+  add_custom_target(
+    repack-stp-static-lib ALL
+    DEPENDS static-smt-switch-stp.stamp
     )
 endif()
 

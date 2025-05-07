@@ -4,56 +4,57 @@
 
 namespace smt {
 
-  const std::unordered_map<::stp::exprkind_t, PrimOp> kind2primop{
+  const std::unordered_map<exprkind_t, PrimOp> type2primop({
     /* Logical Operations */
-    {::stp::exprkind_t::AND, And},
-    {::stp::exprkind_t::OR, Or},
-    {::stp::exprkind_t::XOR, Xor},
-    {::stp::exprkind_t::NOT, Not},
-    {::stp::exprkind_t::IMPLIES, Implies},
-    {::stp::exprkind_t::ITE, Ite},
-    {::stp::exprkind_t::EQ, Equal},
+    {exprkind_t::AND, And},
+    {exprkind_t::OR, Or},
+    {exprkind_t::XOR, Xor},
+    {exprkind_t::NOT, Not},
+    {exprkind_t::IMPLIES, Implies},
+    {exprkind_t::ITE, Ite},
+    {exprkind_t::EQ, Equal},
 
     /* Bitwise Operations */
-    {::stp::exprkind_t::BVNOT, BVNot},
-    {::stp::exprkind_t::BVAND, BVAnd},
-    {::stp::exprkind_t::BVOR, BVOr},
-    {::stp::exprkind_t::BVXOR, BVXor},
-    {::stp::exprkind_t::BVNAND, BVNand},
-    {::stp::exprkind_t::BVNOR, BVNor},
-    {::stp::exprkind_t::BVXNOR, BVXnor},
+    {exprkind_t::BVNOT, BVNot},
+    {exprkind_t::BVAND, BVAnd},
+    {exprkind_t::BVOR, BVOr},
+    {exprkind_t::BVXOR, BVXor},
+    {exprkind_t::BVNAND, BVNand},
+    {exprkind_t::BVNOR, BVNor},
+    {exprkind_t::BVXNOR, BVXnor},
 
     /* Bitvector Manipulation */
-    {::stp::exprkind_t::BVCONCAT, Concat},
-    {::stp::exprkind_t::BVEXTRACT, Extract},
-    {::stp::exprkind_t::BVLEFTSHIFT, BVShl},
-    {::stp::exprkind_t::BVRIGHTSHIFT, BVLshr},
-    {::stp::exprkind_t::BVSRSHIFT, BVAshr},
+    {exprkind_t::BVCONCAT, Concat},
+    {exprkind_t::BVEXTRACT, Extract},
+    {exprkind_t::BVLEFTSHIFT, BVShl},
+    {exprkind_t::BVRIGHTSHIFT, BVLshr},
+    {exprkind_t::BVSRSHIFT, BVAshr},
 
     /* Arithmetic Operations */
-    {::stp::exprkind_t::BVPLUS, BVAdd},
-    {::stp::exprkind_t::BVSUB, BVSub},
-    {::stp::exprkind_t::BVMULT, BVMul},
-    {::stp::exprkind_t::BVDIV, BVUdiv},
-    {::stp::exprkind_t::SBVDIV, BVSdiv},
-    {::stp::exprkind_t::SBVREM, BVSrem},
-    {::stp::exprkind_t::SBVMOD, BVSmod},
+    {exprkind_t::BVPLUS, BVAdd},
+    {exprkind_t::BVUMINUS, BVNeg},
+    {exprkind_t::BVSUB, BVSub},
+    {exprkind_t::BVMULT, BVMul},
+    {exprkind_t::BVDIV, BVUdiv},
+    {exprkind_t::SBVDIV, BVSdiv},
+    {exprkind_t::SBVREM, BVSrem},
+    {exprkind_t::SBVMOD, BVSmod},
 
     /* Comparison Operators (Unsigned & Signed) */
-    {::stp::exprkind_t::BVLT, BVUlt},
-    {::stp::exprkind_t::BVLE, BVUle},
-    {::stp::exprkind_t::BVGT, BVUgt},
-    {::stp::exprkind_t::BVGE, BVUge},
-    {::stp::exprkind_t::BVSLT, BVSlt},
-    {::stp::exprkind_t::BVSLE, BVSle},
-    {::stp::exprkind_t::BVSGT, BVSgt},
-    {::stp::exprkind_t::BVSGE, BVSge}
-};
+    {exprkind_t::BVLT, BVUlt},
+    {exprkind_t::BVLE, BVUle},
+    {exprkind_t::BVGT, BVUgt},
+    {exprkind_t::BVGE, BVUge},
+    {exprkind_t::BVSLT, BVSlt},
+    {exprkind_t::BVSLE, BVSle},
+    {exprkind_t::BVSGT, BVSgt},
+    {exprkind_t::BVSGE, BVSge}
+});
 
 
 // StpTermIter Implementation
 
-StpTermIter::StpTermIter(const StpTermIter & it) : children(it.children), pos(it.pos) {}
+StpTermIter::StpTermIter(const StpTermIter & it) : expr(it.expr), pos(it.pos) {}
 
 void StpTermIter::operator++()
 {
@@ -62,51 +63,31 @@ void StpTermIter::operator++()
 
 const Term StpTermIter::operator*()
 {
-  if (pos < children.size())
-  {
-    Sort sort;
-    const auto& child = children[pos];
-    if (children[pos].GetValueWidth() > 0) {
-      if (children[pos].GetIndexWidth() > 0) {
-        sort = std::make_shared<StpSort>(::stp::Kind::ARRAY,
-                                         children[pos].GetValueWidth(),
-                                         std::make_shared<StpSort>(::stp::Kind::BITVECTOR,
-                                                                   children[pos].GetIndexWidth()),
-                                         std::make_shared<StpSort>(::stp::Kind::BITVECTOR,
-                                                                   children[pos].GetValueWidth()));
-      } else {
-        sort = std::make_shared<StpSort>(::stp::Kind::BITVECTOR, children[pos].GetValueWidth());
-      }
-    } else {
-      sort = std::make_shared<StpSort>(::stp::Kind::BOOLEAN);
-    }
-    const Term child_term = std::make_shared<StpTerm>(child, sort);
-    return child_term;
-  }
-  throw std::out_of_range("StpTermIter out of range");
+  Expr e = getChild(expr, pos);
+  return std::make_shared<StpTerm>(e, vc);
 }
 
 TermIterBase * StpTermIter::clone() const
 {
-  return new StpTermIter(*this);
+  return new StpTermIter(expr, vc);
 }
 
 bool StpTermIter::operator==(const StpTermIter & it) const
 {
-  return (children == it.children) && (pos == it.pos);
+  return equal(it);
 }
 
 bool StpTermIter::equal(const TermIterBase & other) const
 {
-  const auto * other_it = dynamic_cast<const StpTermIter *>(&other);
-  return other_it && (*this == *other_it);
+  const StpTermIter & it = static_cast<const StpTermIter &>(other);
+  return expr == it.expr && pos == it.pos;
 }
 
 // StpTerm Implementation
 
 std::size_t StpTerm::hash() const
 {
-  return vc_getHashQueryStateToBuffer(vc, expr);
+  return reinterpret_cast<std::size_t>(expr);
 }
 
 std::size_t StpTerm::get_id() const
@@ -129,31 +110,28 @@ bool StpTerm::compare(const Term & absterm) const
 
 Op StpTerm::get_op() const
 {
-  enum stp::exprkind_t k = getExprKind(expr);
-  if(!k || kind2primop.find(k) == kind2primop.end())
+  enum exprkind_t k = getExprKind(expr);
+  if(!k || type2primop.find(k) == type2primop.end())
   {
     return Op();
   }
-  return Op(kind2primop.at(k));
+  return Op(type2primop.at(k));
 }
 
 Sort StpTerm::get_sort() const
 {
-  if (!sort)
-  {
-    throw std::runtime_error("Sort not set");
-  }
-  return sort;
+  Type t = vc_getType(vc, expr);
+  return std::make_shared<StpSort>(t, vc);
 }
 
 bool StpTerm::is_symbol() const
 {
-  return node.GetKind() == stp::SYMBOL;
+  return getExprKind(expr) == SYMBOL;
 }
 
 bool StpTerm::is_param() const
 {
-  return node.GetKind() == stp::PARAMBOOL;
+  return getExprKind(expr) == PARAMBOOL;
 }
 
 bool StpTerm::is_symbolic_const() const
@@ -163,39 +141,58 @@ bool StpTerm::is_symbolic_const() const
 
 bool StpTerm::is_value() const
 {
-  return node.isConstant();
+  return getExprKind(expr) == BVCONST || getExprKind(expr) == BOOLEAN;
 }
 
 std::string StpTerm::to_string()
 {
-  if (!is_symbol()) {
-    throw std::logic_error("Cannot convert non-symbol term to string");
+  const char* str = vc_printSMTLIB(vc, expr);
+  if (str)
+  {
+    return std::string(str);
   }
-  return node.GetName();
+  return std::string();
 }
 
 uint64_t StpTerm::to_int() const
 {
-  if (!is_value())
+  if (getExprKind(expr) == BVCONST)
   {
-    throw std::logic_error("Cannot convert non-value term to integer");
+    return static_cast<uint64_t>(getBVUnsignedLongLong(expr));
   }
-  return static_cast<uint64_t>(node.GetValueWidth());
+  if (getType(expr) == BOOLEAN_TYPE)
+  {
+    int bool_val = vc_isBool(expr);
+    if (bool_val == -1) {
+      throw IncorrectUsageException("Term is not a constant");
+    }
+    return bool_val;
+  }
+  
+  throw IncorrectUsageException("Term is not a constant");
 }
 
 TermIter StpTerm::begin()
 {
-  return TermIter(new StpTermIter(node.GetChildren(), 0));
+  return TermIter(new StpTermIter(expr, vc));
 }
 
 TermIter StpTerm::end()
 {
-  return TermIter(new StpTermIter(node.GetChildren(), node.GetChildren().size() - 1));
+  return TermIter(new StpTermIter(expr, vc, getDegree(expr)));
 }
 
 std::string StpTerm::print_value_as(SortKind sk)
 {
-  throw std::runtime_error("Not implemented");
+  if (sk == BOOL)
+  {
+    return getBVUnsigned(expr) ? "true" : "false";
+  }
+  else if (sk == BV)
+  {
+    return std::to_string(getBVUnsigned(expr));
+  }
+  throw IncorrectUsageException("Cannot print value as given sort kind");
 }
 
 } // namespace smt

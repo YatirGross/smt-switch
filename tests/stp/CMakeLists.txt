@@ -12,3 +12,4 @@ macro(switch_add_stp_test name)
 endmacro()
 
 switch_add_stp_test(stp-simple)
+switch_add_stp_test(stp-simple-unsat)
