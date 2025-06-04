@@ -67,6 +67,7 @@ const std::unordered_map<exprkind_t, PrimOp> type2primop({
     {exprkind_t::BVSUB, BVSub},
     {exprkind_t::BVMULT, BVMul},
     {exprkind_t::BVDIV, BVUdiv},
+    {exprkind_t::BVMOD, BVUrem},  // Note: STP uses BVMOD for UREM
     {exprkind_t::SBVDIV, BVSdiv},
     {exprkind_t::SBVREM, BVSrem},
     {exprkind_t::SBVMOD, BVSmod},

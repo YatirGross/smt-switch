@@ -1,5 +1,10 @@
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# Configure RPATH for automatic library discovery
+set(CMAKE_SKIP_BUILD_RPATH FALSE)
+set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 find_library(LIBRT rt)
 
 add_library(smt-switch-stp "${SMT_SWITCH_LIB_TYPE}"
@@ -36,7 +41,7 @@ find_library(CRYPTOMINISAT_LIB REQUIRED
 
 find_library(CADIBACK_LIB REQUIRED
              NAMES libcadiback.so
-             PATHS "${STP_HOME}/deps/cadiback")
+             PATHS "${STP_HOME}/deps/install/lib")
 
 find_library(CADICAL REQUIRED
              NAMES libcadical.so
