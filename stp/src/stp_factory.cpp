@@ -8,10 +8,6 @@ namespace smt {
 SmtSolver StpSolverFactory::create(bool logging)
 {
   SmtSolver solver = std::make_shared<StpSolver>();
-  if (logging)
-  {
-    solver = std::make_shared<LoggingSolver>(solver);
-  }
   return solver;
 }
 

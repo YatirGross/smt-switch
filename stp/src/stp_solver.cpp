@@ -42,6 +42,7 @@ const std::unordered_map<PrimOp, exprkind_t> primop2kind( {
     {BVMul, exprkind_t::BVMULT},
     {BVUdiv, exprkind_t::BVDIV},
     {BVSdiv, exprkind_t::SBVDIV},
+    {BVUrem, exprkind_t::BVMOD},  // Note: STP doesn't have separate UREM, uses BVMOD
     {BVSrem, exprkind_t::SBVREM},
     {BVSmod, exprkind_t::SBVMOD},
     
@@ -439,14 +440,21 @@ Term StpSolver::make_term(bool b) const
 
 Term StpSolver::make_term(int64_t i, const Sort & sort) const
 {
-    if (i < 0) {
-        throw IncorrectUsageException("Integer value out of bounds");
-    }
     if (sort->get_sort_kind() == BV) {
         Type t = std::static_pointer_cast<StpSort>(sort)->type;
         int width = vc_getValueSize(vc, t);
-        unsigned long long val = static_cast<unsigned long long>(i);
-        Expr e = vc_bvConstExprFromLL(vc, width, i);
+        
+        unsigned long long val;
+        if (i < 0) {
+            // Calculate two's complement for negative values
+            // For a negative number -n in width w: 2^w - n
+            unsigned long long max_val = 1ULL << width;  // 2^width
+            val = max_val + i;  // Since i is negative, this is subtraction
+        } else {
+            val = static_cast<unsigned long long>(i);
+        }
+        
+        Expr e = vc_bvConstExprFromLL(vc, width, val);
         return std::make_shared<StpTerm>(e, vc);
     }
     else {

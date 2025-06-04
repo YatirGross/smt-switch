@@ -11,6 +11,31 @@ macro(switch_add_stp_test name)
   add_test(NAME ${name}_test COMMAND ${name})
 endmacro()
 
+# Basic functionality tests
+switch_add_stp_test(stp-basic-bool)
+switch_add_stp_test(stp-basic-bv)
+switch_add_stp_test(stp-basic-arrays)
+
+# Simple operations tests
+switch_add_stp_test(stp-bool-simple)
+switch_add_stp_test(stp-bv-simple)
+switch_add_stp_test(stp-array-simple)
+
+# Complex operations tests  
+switch_add_stp_test(stp-bool-complex)
+switch_add_stp_test(stp-bv-complex)
+switch_add_stp_test(stp-array-complex)
+
+# Integration tests
+switch_add_stp_test(stp-integration)
+
+# Edge cases and regression tests
+switch_add_stp_test(stp-edge-cases)
+
+# Performance and stress tests
+switch_add_stp_test(stp-performance)
+
+# Legacy tests (keep for compatibility)
 switch_add_stp_test(stp-simple)
 switch_add_stp_test(stp-simple-unsat)
 switch_add_stp_test(stp-arrays)

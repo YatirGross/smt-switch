@@ -175,7 +175,11 @@ Term TermTranslator::transfer_term(const Term & term)
       // insert in reverse order
       // helps symbols be declared in same order
       children.clear();
-      children.insert(children.end(), t->begin(), t->end());
+      // Use range-based for loop instead of iterators to fix STP child iteration inconsistency
+      for (auto c : t) {
+        children.push_back(c);
+      }
+      
       for (auto it = children.rbegin(); it != children.rend(); it++)
       {
         to_visit.push_back(*it);

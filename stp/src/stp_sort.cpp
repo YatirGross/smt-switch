@@ -15,22 +15,26 @@ uint64_t StpSort::get_width() const
 
 Sort StpSort::get_indexsort() const
 {
-  if (type2sortKind.at(getType(type)) != ARRAY)
-  {
+  try {
+    // Try to get index size - this will fail if type is not an array
+    int index_size = vc_getIndexSize(vc, type);
+    Type index_type = vc_bvType(vc, index_size);
+    return std::make_shared<StpSort>(index_type, vc);
+  } catch (...) {
     throw IncorrectUsageException("get_indexsort called on a non-array sort");
   }
-  Type index_type = vc_bvType(vc, vc_getIndexSize(vc, type));
-  return std::make_shared<StpSort>(index_type, vc);
 }
 
 Sort StpSort::get_elemsort() const
 {
-  if (type2sortKind.at(getType(type)) != ARRAY)
-  {
+  try {
+    // Try to get value size - this will fail if type is not an array
+    int value_size = vc_getValueSize(vc, type);
+    Type elem_type = vc_bvType(vc, value_size);
+    return std::make_shared<StpSort>(elem_type, vc);
+  } catch (...) {
     throw IncorrectUsageException("get_elemsort called on a non-array sort");
   }
-  Type elem_type = vc_bvType(vc, vc_getValueSize(vc, type));
-  return std::make_shared<StpSort>(elem_type, vc);
 }
 
 std::vector<Sort> StpSort::get_domain_sorts() const
