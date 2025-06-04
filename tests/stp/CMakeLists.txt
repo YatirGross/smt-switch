@@ -13,3 +13,6 @@ endmacro()
 
 switch_add_stp_test(stp-simple)
 switch_add_stp_test(stp-simple-unsat)
+switch_add_stp_test(stp-arrays)
+switch_add_stp_test(stp-incremental)
+switch_add_stp_test(stp-bitvector)
