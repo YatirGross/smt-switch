@@ -52,7 +52,7 @@ build_btor=default
 build_bitwuzla=default
 build_cvc5=default
 build_msat=default
-build_stp=defualt
+build_stp=default
 build_yices2=default
 build_z3=default
 btor_home=default
@@ -288,7 +288,7 @@ cmake_opts="$cmake_opts -DCMAKE_BUILD_TYPE=$build_type"
     && cmake_opts="$cmake_opts -DMSAT_HOME=$msat_home"
 
 [ $stp_home != default ] \
-    && cmake_opts="$cmmake_opts -DSTP_HOME=$stp_home"
+    && cmake_opts="$cmake_opts -DSTP_HOME=$stp_home"
 
 [ $z3_home != default ] \
     && cmake_opts="$cmake_opts -DZ3_HOME=$z3_home"

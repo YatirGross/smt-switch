@@ -90,8 +90,7 @@ const unordered_map<SolverEnum, unordered_set<SolverAttribute>>
         { STP,
           { TERMITER,
             THEORY_BV,
-            ARRAY_MODELS,
-            CONSTARR } },
+            ARRAY_MODELS } },
 
         // TODO: Yices2 should support UNSAT_CORE
         //       but something funky happens with testing

@@ -1,10 +1,39 @@
 #include "stp_term.h"
 #include "stp_solver.h"
+#include <cstring>  // For strcmp
 #include "stp_sort.h"
+#include <functional>  // For std::hash
+#include <iostream>  // For std::cout
 
 namespace smt {
 
-  const std::unordered_map<exprkind_t, PrimOp> type2primop({
+// Helper function to normalize STP string representations for comparison
+std::string normalize_stp_string(const char* str) {
+  if (!str) return "";
+  
+  std::string result;
+  result.reserve(strlen(str));
+  
+  for (const char* p = str; *p; ++p) {
+    char c = *p;
+    
+    // Remove pipe delimiters around symbols (|a| -> a)
+    if (c == '|') {
+      continue;
+    }
+    
+    // Skip all whitespace characters
+    if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+      continue;
+    }
+    
+    result += c;
+  }
+  
+  return result;
+}
+
+const std::unordered_map<exprkind_t, PrimOp> type2primop({
     /* Logical Operations */
     {exprkind_t::AND, And},
     {exprkind_t::OR, Or},
@@ -13,6 +42,8 @@ namespace smt {
     {exprkind_t::IMPLIES, Implies},
     {exprkind_t::ITE, Ite},
     {exprkind_t::EQ, Equal},
+    {exprkind_t::IFF, Equal},  // IFF is treated as Equal for reverse mapping
+    // Note: Distinct is handled specially in STP solver and doesn't have direct mapping
 
     /* Bitwise Operations */
     {exprkind_t::BVNOT, BVNot},
@@ -25,7 +56,7 @@ namespace smt {
 
     /* Bitvector Manipulation */
     {exprkind_t::BVCONCAT, Concat},
-    {exprkind_t::BVEXTRACT, Extract},
+    // Note: Extract is handled specially in STP solver and doesn't have direct mapping
     {exprkind_t::BVLEFTSHIFT, BVShl},
     {exprkind_t::BVRIGHTSHIFT, BVLshr},
     {exprkind_t::BVSRSHIFT, BVAshr},
@@ -85,53 +116,188 @@ bool StpTermIter::equal(const TermIterBase & other) const
 
 // StpTerm Implementation
 
+// NOTE: The hash must be compatible with the equality semantics implemented
+// in StpTerm::compare.
+// For STP, two distinct Expr pointers can denote syntactically equivalent
+// (and thus equal) terms that live in different STP contexts or were created
+// at different times.  Using the raw pointer (or even the STP‐assigned Expr
+// id) as the hash therefore violates the requirement that equal objects have
+// identical hash values.  This manifested in subtle cache misses in
+// TermTranslator which relies on an unordered_map keyed by Terms.
+//
+// To restore the required invariant, we hash a canonicalised SMT-LIB string
+// representation of the expression – the very same representation that is
+// used by compare() for the equality check.  Although this is more
+// expensive than hashing a pointer, the cost is acceptable because hashing
+// only happens when Terms are inserted in hash-based containers.
 std::size_t StpTerm::hash() const
 {
-  return reinterpret_cast<std::size_t>(expr);
+  if (!expr)
+  {
+    // Consistent hash for null expressions
+    return 0;
+  }
+
+  char * buf = nullptr;
+  unsigned long len = 0;
+  vc_printExprToBuffer(vc, expr, &buf, &len);
+
+  std::string normalized;
+  if (buf)
+  {
+    normalized = normalize_stp_string(buf);
+    free(buf);
+  }
+
+  return std::hash<std::string>{}(normalized);
 }
 
 std::size_t StpTerm::get_id() const
 {
+  if (!expr) {
+    // Return a consistent ID for null expressions
+    return 0;
+  }
+  
+  // Otherwise get the expression ID
   return getExprID(expr);
 }
 
 bool StpTerm::compare(const Term & absterm) const
 {
-  try
-  {
-    const StpTerm & st = static_cast<const StpTerm &>(*absterm);
-    return expr == st.expr;
+  // First check if absterm is null
+  if (!absterm) {
+    return false;
   }
-  catch (std::bad_cast & e)
-  {
+  
+  try {
+    const StpTerm * st = dynamic_cast<const StpTerm *>(absterm.get());
+    
+    // If dynamic_cast failed, the types don't match
+    if (!st) {
+      return false;
+    }
+    
+    // Check if either expression is null
+    if (!expr || !st->expr) {
+      return expr == st->expr;  // Both null = equal, otherwise not equal
+    }
+    
+    // Quick check: if they're the same expression object, they're equal
+    if (expr == st->expr) {
+      return true;
+    }
+    
+    // Compare expressions by their IDs first (fast path)
+    std::size_t id1 = getExprID(expr);
+    std::size_t id2 = getExprID(st->expr);
+    
+    if (id1 == id2) {
+      return true;
+    }
+    
+    // For different contexts or different IDs, compare canonical string representations
+    // This is much simpler and more reliable than structural comparison
+    char* buf1 = nullptr;
+    char* buf2 = nullptr;
+    unsigned long len1 = 0, len2 = 0;
+    
+    // Get string representation of first expression
+    vc_printExprToBuffer(vc, expr, &buf1, &len1);
+    
+    // Get string representation of second expression  
+    vc_printExprToBuffer(st->vc, st->expr, &buf2, &len2);
+    
+    bool result = false;
+    if (buf1 && buf2) {
+      // Normalize strings before comparison to handle formatting differences
+      std::string str1 = normalize_stp_string(buf1);
+      std::string str2 = normalize_stp_string(buf2);
+      
+      // Compare the normalized strings
+      result = (str1 == str2);
+    }
+    
+    // Clean up allocated buffers
+    if (buf1) free(buf1);
+    if (buf2) free(buf2);
+    
+    return result;
+    
+  }
+  catch (const std::exception & e) {
     return false;
   }
 }
 
 Op StpTerm::get_op() const
 {
-  enum exprkind_t k = getExprKind(expr);
-  if(!k || type2primop.find(k) == type2primop.end())
+  if (!expr)
   {
     return Op();
   }
-  return Op(type2primop.at(k));
+
+  try
+  {
+    enum exprkind_t k = getExprKind(expr);
+    auto it = type2primop.find(k);
+    if (it != type2primop.end())
+    {
+      return Op(it->second);
+    }
+    else
+    {
+      // Non-operator term (e.g. symbol or value).
+      return Op();
+    }
+  }
+  catch (const std::exception & e)
+  {
+    return Op();
+  }
 }
 
 Sort StpTerm::get_sort() const
 {
-  Type t = vc_getType(vc, expr);
-  return std::make_shared<StpSort>(t, vc);
+  if (!expr) {
+    // For null expressions, we cannot determine the sort
+    throw IncorrectUsageException("Cannot get sort of null expression");
+  }
+
+  try {
+    Type t = vc_getType(vc, expr);
+    if (!t) {
+      throw IncorrectUsageException("Failed to get type of expression");
+    }
+    return std::make_shared<StpSort>(t, vc);
+  } catch (const std::exception& e) {
+    throw IncorrectUsageException(std::string("Error getting sort: ") + e.what());
+  }
 }
 
 bool StpTerm::is_symbol() const
 {
-  return getExprKind(expr) == SYMBOL;
+  if (!expr) {
+    return false;
+  }
+  try {
+    enum exprkind_t k = getExprKind(expr);
+    return k == SYMBOL || k == PARAMBOOL;
+  } catch (const std::exception& e) {
+    return false;
+  }
 }
 
 bool StpTerm::is_param() const
 {
-  return getExprKind(expr) == PARAMBOOL;
+  if (!expr) {
+    return false;
+  }
+  try {
+    return getExprKind(expr) == PARAMBOOL;
+  } catch (const std::exception& e) {
+    return false;
+  }
 }
 
 bool StpTerm::is_symbolic_const() const
@@ -141,32 +307,95 @@ bool StpTerm::is_symbolic_const() const
 
 bool StpTerm::is_value() const
 {
-  return getExprKind(expr) == BVCONST || getExprKind(expr) == BOOLEAN;
+  if (!expr) {
+    return false;
+  }
+  try {
+    enum exprkind_t k = getExprKind(expr);
+    // TRUE and FALSE are also values, not compound terms with operators
+    return k == BVCONST || k == BOOLEAN || k == TRUE || k == FALSE;
+  } catch (const std::exception& e) {
+    return false;
+  }
 }
 
 std::string StpTerm::to_string()
 {
-  const char* str = vc_printSMTLIB(vc, expr);
-  if (str)
-  {
-    return std::string(str);
+  if (!expr) {
+    return "null";
   }
-  return std::string();
+  
+  try {
+    // Check if this is a TRUE or FALSE expression and handle specially
+    enum exprkind_t k = getExprKind(expr);
+    
+    if (k == TRUE) {
+      return "true";
+    } else if (k == FALSE) {
+      return "false";
+    }
+    
+    // Use a simple string buffer to capture the output
+    char* buf = nullptr;
+    unsigned long len = 0;
+    vc_printExprToBuffer(vc, expr, &buf, &len);
+    
+    if (buf)
+    {
+      std::string result(buf);
+      free(buf);  // Free the buffer allocated by STP
+
+      // For symbols STP prints identifiers surrounded by pipes (e.g. |a|).
+      // These extra delimiters do *not* exist in the original name and break
+      // the round-trip translation via TermTranslator which relies on an
+      // exact textual match.  Remove them along with surrounding whitespace.
+      if (k == SYMBOL)
+      {
+        // Strip whitespace
+        result.erase(std::remove_if(result.begin(), result.end(), ::isspace),
+                     result.end());
+
+        if (result.size() >= 2 && result.front() == '|' && result.back() == '|')
+        {
+          result = result.substr(1, result.size() - 2);
+        }
+      }
+
+      return result;
+    }
+    return "unknown";
+  } catch (const std::exception& e) {
+    return std::string("error: ") + e.what();
+  }
 }
 
 uint64_t StpTerm::to_int() const
 {
-  if (getExprKind(expr) == BVCONST)
-  {
-    return static_cast<uint64_t>(getBVUnsignedLongLong(expr));
+  if (!expr) {
+    throw IncorrectUsageException("Cannot convert null term to int");
   }
-  if (getType(expr) == BOOLEAN_TYPE)
-  {
-    int bool_val = vc_isBool(expr);
-    if (bool_val == -1) {
-      throw IncorrectUsageException("Term is not a constant");
+  
+  try {
+    enum exprkind_t k = getExprKind(expr);
+    
+    // Handle TRUE/FALSE expressions directly
+    if (k == TRUE) {
+      return 1;
+    } else if (k == FALSE) {
+      return 0;
+    } else if (k == BVCONST) {
+      return static_cast<uint64_t>(getBVUnsignedLongLong(expr));
     }
-    return bool_val;
+    
+    if (getType(expr) == BOOLEAN_TYPE) {
+      int bool_val = vc_isBool(expr);
+      if (bool_val == -1) {
+        throw IncorrectUsageException("Term is not a constant");
+      }
+      return bool_val;
+    }
+  } catch (const std::exception& e) {
+    throw IncorrectUsageException(std::string("Error converting to int: ") + e.what());
   }
   
   throw IncorrectUsageException("Term is not a constant");
@@ -174,24 +403,105 @@ uint64_t StpTerm::to_int() const
 
 TermIter StpTerm::begin()
 {
-  return TermIter(new StpTermIter(expr, vc));
+  if (!expr) {
+    throw IncorrectUsageException("Cannot iterate over null term");
+  }
+  
+  try {
+    return TermIter(new StpTermIter(expr, vc));
+  } catch (const std::exception& e) {
+    throw IncorrectUsageException(std::string("Error creating iterator: ") + e.what());
+  }
 }
 
 TermIter StpTerm::end()
 {
-  return TermIter(new StpTermIter(expr, vc, getDegree(expr)));
+  if (!expr) {
+    throw IncorrectUsageException("Cannot iterate over null term");
+  }
+  
+  try {
+    return TermIter(new StpTermIter(expr, vc, getDegree(expr)));
+  } catch (const std::exception& e) {
+    throw IncorrectUsageException(std::string("Error creating end iterator: ") + e.what());
+  }
 }
 
 std::string StpTerm::print_value_as(SortKind sk)
 {
-  if (sk == BOOL)
-  {
-    return getBVUnsigned(expr) ? "true" : "false";
+  if (!expr) {
+    throw IncorrectUsageException("Cannot print null term as value");
   }
-  else if (sk == BV)
-  {
-    return std::to_string(getBVUnsigned(expr));
+  
+  try {
+    enum exprkind_t k = getExprKind(expr);
+    
+    if (sk == BOOL) {
+      // Handle TRUE/FALSE expressions directly
+      if (k == TRUE) {
+        return "true";
+      } else if (k == FALSE) {
+        return "false";
+      } else {
+        // For other boolean expressions (e.g., BVCONST of width 1)
+        return getBVUnsigned(expr) ? "true" : "false";
+      }
+    }
+    else if (sk == BV) {
+      // Handle TRUE/FALSE expressions as BV
+      if (k == TRUE) {
+        return "1";
+      } else if (k == FALSE) {
+        return "0";
+      } else if (k == BVCONST) {
+        // For BVCONST, use STP's formatted output directly and convert to SMT-LIB2 format
+        char* buf = nullptr;
+        unsigned long len = 0;
+        vc_printExprToBuffer(vc, expr, &buf, &len);
+        
+        if (buf) {
+          std::string stp_output(buf);
+          free(buf);
+          
+          // Remove trailing spaces
+          while (!stp_output.empty() && stp_output.back() == ' ') {
+            stp_output.pop_back();
+          }
+          
+          Type t = vc_getType(vc, expr);
+          int width = vc_getValueSize(vc, t);
+          
+          // Convert STP format to SMT-LIB2 format
+          if (stp_output.substr(0, 2) == "0x") {
+            // Hex format: "0x02" -> "#x02"
+            std::string result = "#x" + stp_output.substr(2);
+            return result;
+          } else if (stp_output.substr(0, 2) == "0b") {
+            // Binary format: "0b1" -> "#b1"
+            std::string result = "#b" + stp_output.substr(2);
+            return result;
+          } else {
+            // Decimal format: convert to (_ bv<num> <width>) format
+            unsigned long long val = getBVUnsignedLongLong(expr);
+            std::string result = "(_ bv" + std::to_string(val) + " " + std::to_string(width) + ")";
+            return result;
+          }
+        }
+        
+        // Fallback to decimal format if we can't get STP output
+        Type t = vc_getType(vc, expr);
+        int width = vc_getValueSize(vc, t);
+        unsigned long long val = getBVUnsignedLongLong(expr);
+        std::string result = "(_ bv" + std::to_string(val) + " " + std::to_string(width) + ")";
+        return result;
+      } else {
+        return std::to_string(getBVUnsigned(expr));
+      }
+    }
+  } catch (const std::exception& e) {
+    throw IncorrectUsageException(std::string("Error printing value: ") + e.what());
   }
+  
   throw IncorrectUsageException("Cannot print value as given sort kind");
 }
 
