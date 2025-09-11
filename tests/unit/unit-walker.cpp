@@ -38,10 +38,27 @@ class UnitWalkerTests
     s = create_solver(GetParam());
 
     bvsort = s->make_sort(BV, 4);
-    funsort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort });
-    fun2sort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort, bvsort });
     arrsort = s->make_sort(ARRAY, bvsort, bvsort);
     boolsort = s->make_sort(BOOL);
+  }
+  SmtSolver s;
+  Sort bvsort, arrsort, boolsort;
+};
+
+class UnitFunctionWalkerTests
+    : public ::testing::Test,
+      public ::testing::WithParamInterface<SolverConfiguration>
+{
+ protected:
+  void SetUp() override
+  {
+    s = create_solver(GetParam());
+
+    bvsort = s->make_sort(BV, 4);
+    arrsort = s->make_sort(ARRAY, bvsort, bvsort);
+    boolsort = s->make_sort(BOOL);
+    funsort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort });
+    fun2sort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort, bvsort });
   }
   SmtSolver s;
   Sort bvsort, funsort, fun2sort, arrsort, boolsort;
@@ -154,7 +171,7 @@ TEST_P(UnitWalkerTests, ArraySubstitution)
   EXPECT_EQ(arrx_0, iw.visit(arrx));
 }
 
-TEST_P(UnitWalkerTests, FunSubstitution)
+TEST_P(UnitFunctionWalkerTests, FunSubstitution)
 {
   // using IdentityWalker for substitution
   // no reason to use this over the substitute method
@@ -548,7 +565,7 @@ TEST_P(UnitWalkerTests, PathTests3)
   }
 }
 
-TEST_P(UnitWalkerTests, PathTestsUF1)
+TEST_P(UnitFunctionWalkerTests, PathTestsUF1)
 {
   // test traversal using TreeWalker of formula with Uninterpreted Functions
 
@@ -620,7 +637,7 @@ TEST_P(UnitWalkerTests, PathTestsUF1)
   }
 }
 
-TEST_P(UnitWalkerTests, PathTestsUF2)
+TEST_P(UnitFunctionWalkerTests, PathTestsUF2)
 {
   // test traversal using TreeWalker of formula with Uninterpreted Functions
   // that can more than one argument
@@ -916,5 +933,10 @@ INSTANTIATE_TEST_SUITE_P(
     ParametrizedUnitWalker,
     UnitWalkerTests,
     testing::ValuesIn(filter_solver_configurations({ TERMITER })));
+
+INSTANTIATE_TEST_SUITE_P(
+    ParametrizedUnitFunctionWalker,
+    UnitFunctionWalkerTests,
+    testing::ValuesIn(filter_solver_configurations({ TERMITER, THEORY_UF })));
 
 }  // namespace smt_tests

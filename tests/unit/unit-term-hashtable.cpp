@@ -39,15 +39,39 @@ class UnitTestsHashTable : public testing::Test,
     s = create_solver(sc);
 
     bvsort = s->make_sort(BV, 4);
-    funsort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort });
     arrsort = s->make_sort(ARRAY, bvsort, bvsort);
+    
+
   }
   SmtSolver s;
-  Sort bvsort, funsort, arrsort;
+  Sort bvsort, arrsort;
   TermHashTable table;
 };
 
-TEST_P(UnitTestsHashTable, HashTable)
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(UnitFunctionTestsHashTable);
+class UnitFunctionTestsHashTable : public testing::Test,
+                                   public testing::WithParamInterface<SolverEnum>
+{
+ protected:
+  void SetUp() override
+  {
+    // need to make sure we're not using a LoggingSolver
+    // otherwise the reference counts of terms will be influenced
+    // thus, use the "lite" solvers
+    SolverEnum se = GetParam();
+    SolverConfiguration sc(se, false);
+    s = create_solver(sc);
+
+    bvsort = s->make_sort(BV, 4);
+    arrsort = s->make_sort(ARRAY, bvsort, bvsort);
+    funsort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort });
+  }
+  SmtSolver s;
+  Sort bvsort, arrsort, funsort;
+  TermHashTable table;
+};
+
+TEST_P(UnitFunctionTestsHashTable, HashTable)
 {
   Term x = s->make_symbol("x", bvsort);
   Term one = s->make_term(1, bvsort);
@@ -78,5 +102,10 @@ INSTANTIATE_TEST_SUITE_P(
     ParametrizedUnitHashTable,
     UnitTestsHashTable,
     testing::ValuesIn(available_non_generic_solver_enums()));
+
+INSTANTIATE_TEST_SUITE_P(
+    ParametrizedUnitFunctionHashTable,
+    UnitFunctionTestsHashTable,
+    testing::ValuesIn(filter_solver_enums({ THEORY_UF })));
 
 }  // namespace smt_tests

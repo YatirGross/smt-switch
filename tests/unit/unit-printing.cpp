@@ -38,10 +38,9 @@ class UnitPrintTests : public ::testing::Test,
     boolsort = s->make_sort(BOOL);
     bvsort1 = s->make_sort(BV, 1);
     bvsort4 = s->make_sort(BV, 4);
-    funsort = s->make_sort(FUNCTION, SortVec{ bvsort4, bvsort4 });
   }
   SmtSolver s;
-  Sort boolsort, bvsort1, bvsort4, funsort;
+  Sort boolsort, bvsort1, bvsort4;
 };
 
 TEST_P(UnitPrintTests, SortKind)

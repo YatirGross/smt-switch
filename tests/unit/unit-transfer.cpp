@@ -37,6 +37,22 @@ class UnitTransferTests : public ::testing::Test,
 
     boolsort = s->make_sort(BOOL);
     bvsort = s->make_sort(BV, 4);
+  }
+  SmtSolver s;
+  Sort boolsort, bvsort;
+};
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(UnitFunctionTransferTests);
+class UnitFunctionTransferTests : public ::testing::Test,
+                                  public ::testing::WithParamInterface<SolverConfiguration>
+{
+ protected:
+  void SetUp() override
+  {
+    s = create_solver(GetParam());
+
+    boolsort = s->make_sort(BOOL);
+    bvsort = s->make_sort(BV, 4);
     funsort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort });
   }
   SmtSolver s;
@@ -46,11 +62,18 @@ class UnitTransferTests : public ::testing::Test,
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(UnitQuantifierTransferTests);
 class UnitQuantifierTransferTests : public UnitTransferTests
 {
+ protected:
+  void SetUp() override
+  {
+    UnitTransferTests::SetUp();
+    funsort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort });
+  }
+  Sort funsort;
 };
 
 // TODO: Eventually test transferring terms between each pair of solvers
 
-TEST_P(UnitTransferTests, SimpleUFTransfer)
+TEST_P(UnitFunctionTransferTests, SimpleUFTransfer)
 {
   Term a = s->make_symbol("a", bvsort);
   Term f = s->make_symbol("f", funsort);
@@ -69,7 +92,7 @@ TEST_P(UnitTransferTests, SimpleUFTransfer)
   EXPECT_EQ(a2, children[1]);
 }
 
-TEST_P(UnitTransferTests, MonotonicUF)
+TEST_P(UnitFunctionTransferTests, MonotonicUF)
 {
   Term x = s->make_param("x", bvsort);
   Term y = s->make_param("y", bvsort);
@@ -92,5 +115,10 @@ INSTANTIATE_TEST_SUITE_P(
     UnitTransferTests,
     testing::ValuesIn(
         filter_non_generic_solver_configurations({ FULL_TRANSFER, QUANTIFIERS })));
+
+INSTANTIATE_TEST_SUITE_P(ParameterizedUnitFunctionTransferTests,
+                         UnitFunctionTransferTests,
+                         testing::ValuesIn(
+                             filter_non_generic_solver_configurations({ FULL_TRANSFER, THEORY_UF })));
 
 }  // namespace smt_tests

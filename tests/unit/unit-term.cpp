@@ -37,14 +37,31 @@ class UnitTermTests : public ::testing::Test,
 
     boolsort = s->make_sort(BOOL);
     bvsort = s->make_sort(BV, 4);
-    funsort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort });
     arrsort = s->make_sort(ARRAY, bvsort, bvsort);
+  }
+  SmtSolver s;
+  Sort boolsort, bvsort, arrsort;
+};
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(UnitFunctionTermTests);
+class UnitFunctionTermTests : public ::testing::Test,
+                              public testing::WithParamInterface<SolverConfiguration>
+{
+ protected:
+  void SetUp() override
+  {
+    s = create_solver(GetParam());
+
+    boolsort = s->make_sort(BOOL);
+    bvsort = s->make_sort(BV, 4);
+    arrsort = s->make_sort(ARRAY, bvsort, bvsort);
+    funsort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort });
   }
   SmtSolver s;
   Sort boolsort, bvsort, funsort, arrsort;
 };
 
-TEST_P(UnitTermTests, FunOp)
+TEST_P(UnitFunctionTermTests, FunOp)
 {
   Term x = s->make_symbol("x", bvsort);
   Term f = s->make_symbol("f", funsort);
@@ -67,5 +84,9 @@ TEST_P(UnitTermTests, Array)
 INSTANTIATE_TEST_SUITE_P(ParameterizedSolverUnitTerm,
                          UnitTermTests,
                          testing::ValuesIn(available_solver_configurations()));
+
+INSTANTIATE_TEST_SUITE_P(ParameterizedSolverUnitFunctionTerm,
+                         UnitFunctionTermTests,
+                         testing::ValuesIn(filter_solver_configurations({ THEORY_UF })));
 
 }  // namespace smt_tests

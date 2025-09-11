@@ -58,15 +58,47 @@ class UnitQuantifierTests : public ::testing::Test,
 
     boolsort = s->make_sort(BOOL);
     bvsort = s->make_sort(BV, 4);
+  }
+  SmtSolver s;
+  Sort boolsort, bvsort;
+};
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(UnitQuantifierIterTests);
+class UnitQuantifierIterTests : public ::testing::Test,
+                                public testing::WithParamInterface<SolverConfiguration>
+{
+ protected:
+  void SetUp() override
+  {
+    s = create_solver(GetParam());
+
+    boolsort = s->make_sort(BOOL);
+    bvsort = s->make_sort(BV, 4);
+  }
+  SmtSolver s;
+  Sort boolsort, bvsort;
+};
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(UnitFunctionQuantifierTests);
+class UnitFunctionQuantifierTests : public ::testing::Test,
+                                    public testing::WithParamInterface<SolverConfiguration>
+{
+ protected:
+  void SetUp() override
+  {
+    s = create_solver(GetParam());
+
+    boolsort = s->make_sort(BOOL);
+    bvsort = s->make_sort(BV, 4);
     funsort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort });
   }
   SmtSolver s;
   Sort boolsort, bvsort, funsort;
 };
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(UnitQuantifierIterTests);
-class UnitQuantifierIterTests : public ::testing::Test,
-                                public testing::WithParamInterface<SolverConfiguration>
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(UnitFunctionQuantifierIterTests);
+class UnitFunctionQuantifierIterTests : public ::testing::Test,
+                                        public testing::WithParamInterface<SolverConfiguration>
 {
  protected:
   void SetUp() override
@@ -97,7 +129,7 @@ TEST_P(UnitQuantifierIterTests, BoolTrivialUnsat)
   ASSERT_TRUE(!r.is_sat());
 }
 
-TEST_P(UnitQuantifierIterTests, QuantifierTraversal)
+TEST_P(UnitFunctionQuantifierIterTests, QuantifierTraversal)
 {
   if (!GetParam().is_logging_solver && s->get_solver_enum() == Z3)
   {
@@ -121,7 +153,7 @@ TEST_P(UnitQuantifierIterTests, QuantifierTraversal)
   ASSERT_EQ(body, bimpfxeq0);
 }
 
-TEST_P(UnitQuantifierIterTests, QuantifierFunCheck)
+TEST_P(UnitFunctionQuantifierIterTests, QuantifierFunCheck)
 {
   Term b = s->make_param("b", boolsort);
   Term x = s->make_param("x", bvsort);
@@ -138,5 +170,13 @@ INSTANTIATE_TEST_SUITE_P(ParameterizedQuantifierIterTests,
                          UnitQuantifierIterTests,
                          testing::ValuesIn(filter_solver_configurations({ QUANTIFIERS,
                                                                  TERMITER })));
+
+INSTANTIATE_TEST_SUITE_P(ParameterizedUnitFunctionQuantifierTests,
+                         UnitFunctionQuantifierTests,
+                         testing::ValuesIn(filter_solver_configurations({ QUANTIFIERS, THEORY_UF })));
+
+INSTANTIATE_TEST_SUITE_P(ParameterizedUnitFunctionQuantifierIterTests,
+                         UnitFunctionQuantifierIterTests,
+                         testing::ValuesIn(filter_solver_configurations({ QUANTIFIERS, THEORY_UF, TERMITER })));
 
 }  // namespace smt_tests
