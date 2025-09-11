@@ -73,6 +73,8 @@ enum SolverAttribute
   UNINTERP_SORT,
   // supports non-zero arity uninterpreted sorts
   PARAM_UNINTERP_SORT,
+  // supports uninterpreted functions
+  THEORY_UF,
   // aliases booleans and bit-vectors of size one
   BOOL_BV1_ALIASING,
   // supports setting a time limit

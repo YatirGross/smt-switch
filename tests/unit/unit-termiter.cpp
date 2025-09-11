@@ -37,19 +37,44 @@ class UnitTests : public ::testing::Test,
     s = create_solver(GetParam());
 
     bvsort = s->make_sort(BV, 4);
-    funsort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort });
     arrsort = s->make_sort(ARRAY, bvsort, bvsort);
+    
+
   }
   SmtSolver s;
-  Sort bvsort, funsort, arrsort;
+  Sort bvsort, arrsort;
+};
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(UnitFunctionTests);
+class UnitFunctionTests : public ::testing::Test,
+                          public testing::WithParamInterface<SolverConfiguration>
+{
+ protected:
+  void SetUp() override
+  {
+    s = create_solver(GetParam());
+
+    bvsort = s->make_sort(BV, 4);
+    arrsort = s->make_sort(ARRAY, bvsort, bvsort);
+    funsort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort });
+  }
+  SmtSolver s;
+  Sort bvsort, arrsort, funsort;
 };
 
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(ConstArrUnitTests);
 class ConstArrUnitTests : public UnitTests
 {
+ protected:
+  void SetUp() override
+  {
+    UnitTests::SetUp();
+    funsort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort });
+  }
+  Sort funsort;
 };
 
-TEST_P(UnitTests, TermIter)
+TEST_P(UnitFunctionTests, TermIter)
 {
   Term x = s->make_symbol("x", bvsort);
   Term f = s->make_symbol("f", funsort);
@@ -63,7 +88,7 @@ TEST_P(UnitTests, TermIter)
   EXPECT_EQ(it, it2);
 }
 
-TEST_P(ConstArrUnitTests, ConstArr)
+TEST_P(UnitFunctionTests, ConstArr)
 {
   Term zero     = s->make_term(0, bvsort);
   Term constarr = s->make_term(zero, arrsort);
@@ -73,7 +98,7 @@ TEST_P(ConstArrUnitTests, ConstArr)
   ASSERT_TRUE(constarr->get_sort()->get_elemsort() == bvsort);
 }
 
-TEST_P(ConstArrUnitTests, IdentityWalker)
+TEST_P(UnitFunctionTests, IdentityWalker)
 {
   Term x = s->make_symbol("x", bvsort);
   Term y = s->make_symbol("y", bvsort);
@@ -95,7 +120,7 @@ TEST_P(ConstArrUnitTests, IdentityWalker)
   ASSERT_EQ(final_term, id_final_term);
 }
 
-TEST_P(UnitTests, InputIterator)
+TEST_P(UnitFunctionTests, InputIterator)
 {
   Term x = s->make_symbol("x", bvsort);
   Term f = s->make_symbol("f", funsort);
@@ -105,7 +130,7 @@ TEST_P(UnitTests, InputIterator)
   ASSERT_EQ(children[1], x);
 }
 
-TEST_P(UnitTests, CopyIter)
+TEST_P(UnitFunctionTests, CopyIter)
 {
   Term x = s->make_symbol("x", bvsort);
   Term f = s->make_symbol("f", funsort);
@@ -133,5 +158,10 @@ INSTANTIATE_TEST_SUITE_P(
     ParametrizedConstArrUnit,
     ConstArrUnitTests,
     testing::ValuesIn(filter_solver_configurations({ CONSTARR, TERMITER })));
+
+INSTANTIATE_TEST_SUITE_P(
+    ParametrizedUnitFunction,
+    UnitFunctionTests,
+    testing::ValuesIn(filter_solver_configurations({ THEORY_UF, TERMITER })));
 
 }  // namespace smt_tests

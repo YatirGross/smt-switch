@@ -44,7 +44,34 @@ class LoggingTests : public ::testing::Test,
     bvsort4 = s->make_sort(BV, 4);
     bvsort8 = s->make_sort(BV, 8);
     arraysort = s->make_sort(ARRAY, bvsort4, bvsort8);
-    funsort = s->make_sort(FUNCTION, SortVec{ bvsort4, bvsort8 });
+
+    x = s->make_symbol("x", bvsort4);
+    y = s->make_symbol("y", bvsort4);
+    zero = s->make_term(0, bvsort4);
+    one = s->make_term(1, bvsort4);
+  }
+  SmtSolver s;
+  Sort bvsort4, bvsort8, arraysort;
+  Term x, y, zero, one;
+};
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(LoggingFunctionTests);
+class LoggingFunctionTests : public ::testing::Test,
+                             public ::testing::WithParamInterface<SolverConfiguration>
+{
+ protected:
+  void SetUp() override
+  {
+    // IMPORTANT : make sure not to use doubly nested LoggingSolvers
+    // can mess things up
+    // Thus, need to use the "lite" version of solvers
+    // before wrapping with a LoggingSolver
+    s = make_shared<LoggingSolver>(create_solver(GetParam()));
+    s->set_opt("produce-models", "true");
+    bvsort4 = s->make_sort(BV, 4);
+    bvsort8 = s->make_sort(BV, 8);
+    arraysort = s->make_sort(ARRAY, bvsort4, bvsort8);
+    funsort = s->make_sort(FUNCTION, SortVec{ bvsort4, bvsort4 });
 
     x = s->make_symbol("x", bvsort4);
     y = s->make_symbol("y", bvsort4);
@@ -112,7 +139,7 @@ TEST_P(LoggingTests, ConstantSorts)
   EXPECT_EQ(bv1->get_sort()->get_width(), 1);
 }
 
-TEST_P(LoggingTests, Compare)
+TEST_P(LoggingFunctionTests, Compare)
 {
   Term f = s->make_symbol("f", funsort);
   Term fx = s->make_term(Apply, f, x);
@@ -154,5 +181,10 @@ INSTANTIATE_TEST_SUITE_P(
     ParameterizedSolverLoggingTests,
     LoggingTests,
     testing::ValuesIn(available_solver_configurations()));
+
+INSTANTIATE_TEST_SUITE_P(
+    ParameterizedSolverLoggingFunctionTests,
+    LoggingFunctionTests,
+    testing::ValuesIn(filter_solver_configurations({ THEORY_UF })));
 
 }  // namespace smt_tests

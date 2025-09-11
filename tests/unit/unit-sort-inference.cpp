@@ -38,6 +38,33 @@ class UnitSortInferenceTests : public ::testing::Test,
     bvsort4 = s->make_sort(BV, 4);
     bvsort5 = s->make_sort(BV, 5);
     arrsort = s->make_sort(ARRAY, bvsort4, bvsort4);
+
+    b1 = s->make_symbol("b1", boolsort);
+    b2 = s->make_symbol("b2", boolsort);
+    p = s->make_symbol("p", bvsort4);
+    q = s->make_symbol("q", bvsort4);
+    w = s->make_symbol("w", bvsort5);
+    arr = s->make_symbol("arr", arrsort);
+  }
+  SmtSolver s;
+  Sort boolsort, bvsort4, bvsort5, arrsort;
+  Term b1, b2, p, q, w, arr;
+};
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(UnitFunctionSortInferenceTests);
+class UnitFunctionSortInferenceTests : public ::testing::Test,
+                                       public ::testing::WithParamInterface<SolverConfiguration>
+{
+ protected:
+  void SetUp() override
+  {
+    s = create_solver(GetParam());
+    s->set_opt("produce-models", "true");
+
+    boolsort = s->make_sort(BOOL);
+    bvsort4 = s->make_sort(BV, 4);
+    bvsort5 = s->make_sort(BV, 5);
+    arrsort = s->make_sort(ARRAY, bvsort4, bvsort4);
     funsort = s->make_sort(FUNCTION, { bvsort4, bvsort4, boolsort });
 
     b1 = s->make_symbol("b1", boolsort);
@@ -76,6 +103,32 @@ class UnitArithmeticSortInferenceTests : public UnitSortInferenceTests
 };
 
 TEST_P(UnitSortInferenceTests, HelperTests)
+{
+  EXPECT_TRUE(equal_sorts({ boolsort, boolsort }));
+  EXPECT_TRUE(equal_sorts({ bvsort4, bvsort4 }));
+  EXPECT_TRUE(equal_sorts({ arrsort, arrsort }));
+
+  EXPECT_FALSE(equal_sorts({ boolsort, bvsort4 }));
+  EXPECT_FALSE(equal_sorts({ bvsort4, bvsort5 }));
+
+  EXPECT_TRUE(equal_sortkinds({ bvsort4, bvsort5 }));
+
+
+  EXPECT_FALSE(check_ite_sorts({ boolsort, bvsort4, bvsort5 }));
+
+  // if solver aliases booleans and bitvectors of width 1, this test fails
+  if (!solver_has_attribute(s->get_solver_enum(), BOOL_BV1_ALIASING))
+  {
+    EXPECT_TRUE(check_ite_sorts({ boolsort, bvsort4, bvsort4 }));
+    EXPECT_TRUE(bool_sorts({ boolsort }));
+  }
+
+  EXPECT_TRUE(bv_sorts({ bvsort4 }));
+  EXPECT_TRUE(array_sorts({ arrsort }));
+
+}
+
+TEST_P(UnitFunctionSortInferenceTests, HelperTests)
 {
   EXPECT_TRUE(equal_sorts({ boolsort, boolsort }));
   EXPECT_TRUE(equal_sorts({ bvsort4, bvsort4 }));
@@ -143,19 +196,7 @@ TEST_P(UnitSortInferenceTests, SortednessTests)
   EXPECT_FALSE(check_sortedness(Store, {arr, p, w}));
   EXPECT_FALSE(check_sortedness(Store, {arr, w, p}));
 
-  // BTOR doesn't support getting the sort of a function yet
-  if (s->get_solver_enum() != BTOR)
-  {
-    /********* Functions ********/
-    EXPECT_TRUE(check_sortedness(Apply, { f, p, q }));
-    // wrong type
-    EXPECT_FALSE(check_sortedness(Apply, { f, p, w }));
-    EXPECT_FALSE(check_sortedness(Apply, { f, arr, q }));
-    // wrong number of arguments
-    EXPECT_FALSE(check_sortedness(Apply, {f}));
-    EXPECT_FALSE(check_sortedness(Apply, {f, p}));
-    EXPECT_FALSE(check_sortedness(Apply, {f, arr}));
-  }
+
 
   /************** Quantifiers (if supported) ******************/
   if (solver_has_attribute(s->get_solver_enum(), QUANTIFIERS))
@@ -214,12 +255,27 @@ TEST_P(UnitSortInferenceTests, SortComputation)
   EXPECT_EQ(arrsort, compute_sort(Store, s, { arrsort, bvsort4, bvsort4 }));
   EXPECT_EQ(arrsort, compute_sort(Store, s, { arr, p, q }));
 
+
+}
+
+TEST_P(UnitFunctionSortInferenceTests, SortednessTests)
+{
   // BTOR doesn't support getting the sort of a function yet
   if (s->get_solver_enum() != BTOR)
   {
     /********* Functions ********/
     EXPECT_EQ(boolsort, compute_sort(Apply, s, { f, p, q }));
     EXPECT_EQ(boolsort, compute_sort(Apply, s, { funsort, bvsort4, bvsort4 }));
+    
+    // Function sortedness tests
+    EXPECT_TRUE(check_sortedness(Apply, { f, p, q }));
+    // wrong type
+    EXPECT_FALSE(check_sortedness(Apply, { f, p, w }));
+    EXPECT_FALSE(check_sortedness(Apply, { f, arr, q }));
+    // wrong number of arguments
+    EXPECT_FALSE(check_sortedness(Apply, {f}));
+    EXPECT_FALSE(check_sortedness(Apply, {f, p}));
+    EXPECT_FALSE(check_sortedness(Apply, {f, arr}));
   }
 }
 
@@ -280,6 +336,10 @@ TEST_P(UnitArithmeticSortInferenceTests, ArithmeticSortComputation)
 INSTANTIATE_TEST_SUITE_P(ParameterizedUnitSortInference,
                          UnitSortInferenceTests,
                          testing::ValuesIn(available_solver_configurations()));
+
+INSTANTIATE_TEST_SUITE_P(ParameterizedUnitFunctionSortInference,
+                         UnitFunctionSortInferenceTests,
+                         testing::ValuesIn(filter_solver_configurations({ THEORY_UF })));
 
 INSTANTIATE_TEST_SUITE_P(ParameterizedUnitArithmeticSortInference,
                          UnitArithmeticSortInferenceTests,

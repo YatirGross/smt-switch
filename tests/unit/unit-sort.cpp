@@ -39,8 +39,27 @@ class UnitSortTests : public ::testing::Test,
 
     boolsort = s->make_sort(BOOL);
     bvsort = s->make_sort(BV, 4);
-    funsort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort });
     arrsort = s->make_sort(ARRAY, bvsort, bvsort);
+  }
+  SmtSolver s;
+  Sort boolsort, bvsort, arrsort;
+};
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(UnitFunctionSortTests);
+class UnitFunctionSortTests : public ::testing::Test,
+                              public ::testing::WithParamInterface<SolverConfiguration>
+{
+ protected:
+  void SetUp() override
+  {
+    s = create_solver(GetParam());
+    s->set_opt("produce-models", "true");
+    s->set_opt("incremental", "true");
+
+    boolsort = s->make_sort(BOOL);
+    bvsort = s->make_sort(BV, 4);
+    arrsort = s->make_sort(ARRAY, bvsort, bvsort);
+    funsort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort });
   }
   SmtSolver s;
   Sort boolsort, bvsort, funsort, arrsort;
@@ -72,13 +91,17 @@ TEST_P(UnitSortTests, SameSortDiffObj)
   Sort bvsort8 = s->make_sort(BV, 8);
   EXPECT_NE(bvsort, bvsort8);
 
-  Sort funsort_2 = s->make_sort(FUNCTION, { bvsort, bvsort_2 });
-  EXPECT_EQ(funsort->hash(), funsort_2->hash());
-  EXPECT_EQ(funsort, funsort_2);
-
   Sort arrsort_2 = s->make_sort(ARRAY, bvsort, bvsort_2);
   EXPECT_EQ(arrsort->hash(), arrsort_2->hash());
   EXPECT_EQ(arrsort, arrsort_2);
+}
+
+TEST_P(UnitFunctionSortTests, FunctionSortEquality)
+{
+  Sort bvsort_2 = s->make_sort(BV, 4);
+  Sort funsort_2 = s->make_sort(FUNCTION, { bvsort, bvsort_2 });
+  EXPECT_EQ(funsort->hash(), funsort_2->hash());
+  EXPECT_EQ(funsort, funsort_2);
 }
 
 TEST_P(UnitSortTests, SortParams)
@@ -209,6 +232,11 @@ INSTANTIATE_TEST_SUITE_P(
     ParameterizedUnitSortTests,
     UnitSortTests,
     testing::ValuesIn(available_non_generic_solver_configurations()));
+
+INSTANTIATE_TEST_SUITE_P(
+    ParameterizedUnitFunctionSortTests,
+    UnitFunctionSortTests,
+    testing::ValuesIn(filter_solver_configurations({ THEORY_UF })));
 
 INSTANTIATE_TEST_SUITE_P(ParameterizedUnitSortArithTests,
                          UnitSortArithTests,

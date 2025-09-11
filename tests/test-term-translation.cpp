@@ -279,19 +279,24 @@ TEST_P(TranslationTests, UninterpretedSort)
   }
 
   ASSERT_TRUE(uninterp_sort);
-  Sort ufsort = s1->make_sort(FUNCTION, { uninterp_sort, boolsort });
-  Term v = s1->make_symbol("v", uninterp_sort);
-  Term f = s1->make_symbol("f", ufsort);
-  Term fv = s1->make_term(Apply, f, v);
+  
+  // Only test function sorts if both solvers support THEORY_UF
+  if (solver_has_attribute(get<0>(GetParam()).solver_enum, THEORY_UF) && 
+      solver_has_attribute(get<1>(GetParam()).solver_enum, THEORY_UF)) {
+    Sort ufsort = s1->make_sort(FUNCTION, { uninterp_sort, boolsort });
+    Term v = s1->make_symbol("v", uninterp_sort);
+    Term f = s1->make_symbol("f", ufsort);
+    Term fv = s1->make_term(Apply, f, v);
 
-  TermTranslator to_s2(s2);
-  TermTranslator to_s1(s1);
+    TermTranslator to_s2(s2);
+    TermTranslator to_s1(s1);
 
-  Term fv_2 = to_s2.transfer_term(fv);
-  EXPECT_EQ(fv_2->get_op(), Apply);
+    Term fv_2 = to_s2.transfer_term(fv);
+    EXPECT_EQ(fv_2->get_op(), Apply);
 
-  Term fv_1 = to_s1.transfer_term(fv_2);
-  EXPECT_EQ(fv, fv_1);
+    Term fv_1 = to_s1.transfer_term(fv_2);
+    EXPECT_EQ(fv, fv_1);
+  }
 }
 
 TEST_P(BoolArrayTranslationTests, Arrays)

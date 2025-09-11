@@ -37,14 +37,42 @@ class UnitSymbolTests : public ::testing::Test,
 
     boolsort = s->make_sort(BOOL);
     bvsort = s->make_sort(BV, 4);
-    funsort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort });
     arrsort = s->make_sort(ARRAY, bvsort, bvsort);
   }
   SmtSolver s;
-  Sort boolsort, bvsort, funsort, arrsort;
+  Sort boolsort, bvsort, arrsort;
+};
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(UnitFunctionSymbolTests);
+class UnitFunctionSymbolTests : public ::testing::Test,
+                                public testing::WithParamInterface<SolverConfiguration>
+{
+ protected:
+  void SetUp() override
+  {
+    s = create_solver(GetParam());
+
+    boolsort = s->make_sort(BOOL);
+    bvsort = s->make_sort(BV, 4);
+    arrsort = s->make_sort(ARRAY, bvsort, bvsort);
+    funsort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort });
+  }
+  SmtSolver s;
+  Sort boolsort, bvsort, arrsort, funsort;
 };
 
 TEST_P(UnitSymbolTests, RedeclareException)
+{
+  Term b = s->make_symbol("b", boolsort);
+  Term x = s->make_symbol("x", bvsort);
+  Term a = s->make_symbol("a", arrsort);
+
+  EXPECT_THROW(s->make_symbol("b", boolsort), IncorrectUsageException);
+  EXPECT_THROW(s->make_symbol("x", bvsort), IncorrectUsageException);
+  EXPECT_THROW(s->make_symbol("a", arrsort), IncorrectUsageException);
+}
+
+TEST_P(UnitFunctionSymbolTests, RedeclareException)
 {
   Term b = s->make_symbol("b", boolsort);
   Term x = s->make_symbol("x", bvsort);
@@ -58,6 +86,24 @@ TEST_P(UnitSymbolTests, RedeclareException)
 }
 
 TEST_P(UnitSymbolTests, GetSymbol)
+{
+  Term b = s->make_symbol("b", boolsort);
+  Term x = s->make_symbol("x", bvsort);
+  Term a = s->make_symbol("a", arrsort);
+
+  EXPECT_EQ(b, s->get_symbol("b"));
+  EXPECT_EQ(x, s->get_symbol("x"));
+  EXPECT_EQ(a, s->get_symbol("a"));
+
+  string funky_name = "strange @ name!";
+  Term funky_sym = s->make_symbol(funky_name, boolsort);
+
+  EXPECT_EQ(funky_sym, s->get_symbol(funky_name));
+
+  EXPECT_THROW(s->get_symbol("nonexistent_symbol"), IncorrectUsageException);
+}
+
+TEST_P(UnitFunctionSymbolTests, GetSymbol)
 {
   Term b = s->make_symbol("b", boolsort);
   Term x = s->make_symbol("x", bvsort);
@@ -83,5 +129,9 @@ TEST_P(UnitSymbolTests, GetSymbol)
 INSTANTIATE_TEST_SUITE_P(ParameterizedSolverUnitSymbol,
                          UnitSymbolTests,
                          testing::ValuesIn(available_solver_configurations()));
+
+INSTANTIATE_TEST_SUITE_P(ParameterizedSolverUnitFunctionSymbol,
+                         UnitFunctionSymbolTests,
+                         testing::ValuesIn(filter_solver_configurations({ THEORY_UF })));
 
 }  // namespace smt_tests

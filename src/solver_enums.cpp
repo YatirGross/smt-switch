@@ -34,7 +34,8 @@ const unordered_map<SolverEnum, unordered_set<SolverAttribute>>
             CONSTARR,
             UNSAT_CORE,
             QUANTIFIERS,
-            BOOL_BV1_ALIASING } },
+            BOOL_BV1_ALIASING,
+            THEORY_UF } },
 
         { BZLA,
           { TERMITER,
@@ -63,7 +64,8 @@ const unordered_map<SolverEnum, unordered_set<SolverAttribute>>
             THEORY_DATATYPE,
             QUANTIFIERS,
             UNINTERP_SORT,
-            PARAM_UNINTERP_SORT } },
+            PARAM_UNINTERP_SORT,
+            THEORY_UF } },
 
         { GENERIC_SOLVER,
           { TERMITER,
@@ -73,7 +75,8 @@ const unordered_map<SolverEnum, unordered_set<SolverAttribute>>
             ARRAY_FUN_BOOLS,
             UNSAT_CORE,
             THEORY_DATATYPE,
-            QUANTIFIERS } },
+            QUANTIFIERS,
+            THEORY_UF } },
 
         { MSAT,
           { TERMITER,
@@ -85,10 +88,12 @@ const unordered_map<SolverEnum, unordered_set<SolverAttribute>>
             FULL_TRANSFER,
             UNSAT_CORE,
             QUANTIFIERS,
-            UNINTERP_SORT } },
+            UNINTERP_SORT,
+            THEORY_UF } },
 
         { STP,
-          { TERMITER,
+          { LOGGING,
+            TERMITER,
             THEORY_BV,
             ARRAY_MODELS } },
 
@@ -103,6 +108,7 @@ const unordered_map<SolverEnum, unordered_set<SolverAttribute>>
             THEORY_REAL,
             ARRAY_FUN_BOOLS,
             UNINTERP_SORT,
+            THEORY_UF,
             TIMELIMIT } },
         { Z3,
           { TERMITER,
@@ -116,6 +122,7 @@ const unordered_map<SolverEnum, unordered_set<SolverAttribute>>
             THEORY_DATATYPE,
             QUANTIFIERS,
             UNINTERP_SORT,
+            THEORY_UF,
             TIMELIMIT } },
 
     });
@@ -178,7 +185,9 @@ std::ostream & operator<<(std::ostream & o, SolverAttribute a)
 {
   switch (a)
   {
+    case LOGGING: o << "LOGGING"; break;
     case TERMITER: o << "TERMITER"; break;
+    case THEORY_BV: o << "THEORY_BV"; break;
     case THEORY_INT: o << "THEORY_INT"; break;
     case THEORY_REAL: o << "THEORY_REAL"; break;
     case THEORY_STR: o << "THEORY_STR"; break;
@@ -189,7 +198,11 @@ std::ostream & operator<<(std::ostream & o, SolverAttribute a)
     case UNSAT_CORE: o << "UNSAT_CORE"; break;
     case THEORY_DATATYPE: o << "THEORY_DATATYPE"; break;
     case QUANTIFIERS: o << "QUANTIFIERS"; break;
+    case UNINTERP_SORT: o << "UNINTERP_SORT"; break;
+    case PARAM_UNINTERP_SORT: o << "PARAM_UNINTERP_SORT"; break;
+    case THEORY_UF: o << "THEORY_UF"; break;
     case BOOL_BV1_ALIASING: o << "BOOL_BV1_ALIASING"; break;
+    case TIMELIMIT: o << "TIMELIMIT"; break;
     default:
       // should print the integer representation
       throw NotImplementedException("Unknown SolverAttribute: "

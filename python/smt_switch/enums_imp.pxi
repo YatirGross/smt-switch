@@ -195,6 +195,10 @@ cdef SolverAttribute QUANTIFIERS = SolverAttribute()
 QUANTIFIERS.sa = c_QUANTIFIERS
 setattr(solverattr, "QUANTIFIERS", QUANTIFIERS)
 
+cdef SolverAttribute THEORY_UF = SolverAttribute()
+THEORY_UF.sa = c_THEORY_UF
+setattr(solverattr, "THEORY_UF", THEORY_UF)
+
 cdef SolverAttribute BOOL_BV1_ALIASING = SolverAttribute()
 BOOL_BV1_ALIASING.sa = c_BOOL_BV1_ALIASING
 setattr(solverattr, "BOOL_BV1_ALIASING", BOOL_BV1_ALIASING)

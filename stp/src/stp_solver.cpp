@@ -32,6 +32,10 @@ const std::unordered_map<PrimOp, exprkind_t> primop2kind( {
     /* Bitvector Manipulation */
     {Concat, exprkind_t::BVCONCAT},
     {Extract, exprkind_t::BVEXTRACT},
+    {Repeat, exprkind_t::BVCONCAT},  // Repeat will be implemented using concat
+    {Sign_Extend, exprkind_t::BVCONCAT},  // Sign_Extend will be implemented using concat
+    {Rotate_Left, exprkind_t::BVCONCAT},  // Rotate_Left will be implemented using extract and concat
+    {Rotate_Right, exprkind_t::BVCONCAT},  // Rotate_Right will be implemented using extract and concat
     {BVShl, exprkind_t::BVLEFTSHIFT},
     {BVLshr, exprkind_t::BVRIGHTSHIFT},
     {BVAshr, exprkind_t::BVSRSHIFT},
@@ -636,6 +640,101 @@ Term StpSolver::make_term(const Op op, const Term & t) const
         return std::make_shared<StpTerm>(vc_bvExtract(vc, e, high, low), vc);
     }
     
+    // Special handling for Repeat operation
+    if (op.prim_op == Repeat) {
+        if (op.idx0 < 1) {
+            throw IncorrectUsageException("Can't create repeat with index < 1");
+        }
+        Expr e = std::static_pointer_cast<StpTerm>(t)->expr;
+        Expr result = e;
+        for (uint64_t i = 1; i < op.idx0; i++) {
+            result = vc_bvConcatExpr(vc, e, result);
+        }
+        return std::make_shared<StpTerm>(result, vc);
+    }
+    
+    // Special handling for Sign_Extend operation
+    if (op.prim_op == Sign_Extend) {
+        if (op.idx0 < 0) {
+            throw IncorrectUsageException("Can't sign extend by negative number");
+        }
+        if (op.idx0 == 0) {
+            return t;  // No extension needed
+        }
+        Expr e = std::static_pointer_cast<StpTerm>(t)->expr;
+        // Get the width of the input bitvector
+        Type input_type = vc_getType(vc, e);
+        int width = vc_getValueSize(vc, input_type);
+        // Get the most significant bit (sign bit)
+        Expr sign_bit = vc_bvExtract(vc, e, width - 1, width - 1);  // Extract MSB
+        // Create a bitvector of all sign bits
+        Expr sign_bits = sign_bit;
+        for (uint64_t i = 1; i < op.idx0; i++) {
+            sign_bits = vc_bvConcatExpr(vc, sign_bit, sign_bits);
+        }
+        // Concatenate sign bits with original expression
+        Expr result = vc_bvConcatExpr(vc, sign_bits, e);
+        return std::make_shared<StpTerm>(result, vc);
+    }
+    
+    // Special handling for Rotate_Left operation
+    if (op.prim_op == Rotate_Left) {
+        if (op.idx0 < 0) {
+            throw IncorrectUsageException("Can't rotate by negative number");
+        }
+        Expr e = std::static_pointer_cast<StpTerm>(t)->expr;
+        // Get the width of the input bitvector
+        Type input_type = vc_getType(vc, e);
+        int width = vc_getValueSize(vc, input_type);
+        
+        if (op.idx0 == 0 || width == 1) {
+            return t;  // No rotation needed
+        }
+        
+        // Rotate left by n: extract top n bits and bottom bits, then concat
+        uint64_t n = op.idx0 % width;  // Handle rotation amounts >= width
+        if (n == 0) {
+            return t;  // No rotation needed
+        }
+        
+        // Extract top n bits: [width-1 : width-n]
+        Expr top_bits = vc_bvExtract(vc, e, width - 1, width - n);
+        // Extract bottom bits: [width-n-1 : 0]
+        Expr bottom_bits = vc_bvExtract(vc, e, width - n - 1, 0);
+        // Concat: bottom_bits ++ top_bits
+        Expr result = vc_bvConcatExpr(vc, bottom_bits, top_bits);
+        return std::make_shared<StpTerm>(result, vc);
+    }
+    
+    // Special handling for Rotate_Right operation
+    if (op.prim_op == Rotate_Right) {
+        if (op.idx0 < 0) {
+            throw IncorrectUsageException("Can't rotate by negative number");
+        }
+        Expr e = std::static_pointer_cast<StpTerm>(t)->expr;
+        // Get the width of the input bitvector
+        Type input_type = vc_getType(vc, e);
+        int width = vc_getValueSize(vc, input_type);
+        
+        if (op.idx0 == 0 || width == 1) {
+            return t;  // No rotation needed
+        }
+        
+        // Rotate right by n: extract top bits and bottom n bits, then concat
+        uint64_t n = op.idx0 % width;  // Handle rotation amounts >= width
+        if (n == 0) {
+            return t;  // No rotation needed
+        }
+        
+        // Extract top bits: [width-1 : n]
+        Expr top_bits = vc_bvExtract(vc, e, width - 1, n);
+        // Extract bottom n bits: [n-1 : 0]
+        Expr bottom_n_bits = vc_bvExtract(vc, e, n - 1, 0);
+        // Concat: bottom_n_bits ++ top_bits
+        Expr result = vc_bvConcatExpr(vc, bottom_n_bits, top_bits);
+        return std::make_shared<StpTerm>(result, vc);
+    }
+    
     if (!primop2kind.count(op.prim_op))
     {
         return Term();
@@ -852,6 +951,14 @@ Term StpSolver::make_term(const Op op, const Term & t0, const Term & t1, const T
         return std::make_shared<StpTerm>(result, vc);
     }
     
+    if (op.prim_op == Xor) {
+        Expr e0 = std::static_pointer_cast<StpTerm>(t0)->expr;
+        Expr e1 = std::static_pointer_cast<StpTerm>(t1)->expr;
+        Expr e2 = std::static_pointer_cast<StpTerm>(t2)->expr;
+        Expr result = vc_xorExpr(vc, e0, vc_xorExpr(vc, e1, e2));
+        return std::make_shared<StpTerm>(result, vc);
+    }
+
     if (!primop2kind.count(op.prim_op))
     {
         return Term();
@@ -881,7 +988,7 @@ Term StpSolver::make_term(const Op op, const TermVec & terms) const
             return make_term(op, terms[0], terms[1], terms[2]);
         default:
             // Handle n-ary operations for operators that support it
-            if (op.prim_op == And || op.prim_op == Or || op.prim_op == BVAdd) {
+            if (op.prim_op == And || op.prim_op == Or || op.prim_op == BVAdd || op.prim_op == Xor) {
                 // Convert terms to STP expressions
                 std::vector<Expr> exprs;
                 exprs.reserve(terms.size());
@@ -899,6 +1006,12 @@ Term StpSolver::make_term(const Op op, const TermVec & terms) const
                 } else if (op.prim_op == Or) {
                     // Use the n-ary OR operation
                     result = vc_orExprN(vc, exprs.data(), exprs.size());
+                } else if (op.prim_op == Xor) {
+                    // Use the n-ary XOR operation
+                    result = vc_xorExpr(vc, exprs[0], exprs[1]);
+                    for (size_t i = 2; i < exprs.size(); ++i) {
+                        result = vc_xorExpr(vc, result, exprs[i]);
+                    }
                 } else if (op.prim_op == BVAdd) {
                     // Get bit-width from the first term's sort
                     Sort sort = terms[0]->get_sort();
@@ -914,7 +1027,8 @@ Term StpSolver::make_term(const Op op, const TermVec & terms) const
                 
                 return std::make_shared<StpTerm>(result, vc);
             }
-            
+            std::cout << "the op is " << op.prim_op << std::endl;
+            std::cout << "the terms size is " << terms.size() << std::endl;
             throw IncorrectUsageException("Too many terms for the given operator");
     }
 }

@@ -56,7 +56,8 @@ const std::unordered_map<exprkind_t, PrimOp> type2primop({
 
     /* Bitvector Manipulation */
     {exprkind_t::BVCONCAT, Concat},
-    // Note: Extract is handled specially in STP solver and doesn't have direct mapping
+    {exprkind_t::BVEXTRACT, Extract},
+    // Note: Repeat, Sign_Extend, Rotate_Left, and Rotate_Right operations will be mapped to Concat in get_op() since they use concat internally
     {exprkind_t::BVLEFTSHIFT, BVShl},
     {exprkind_t::BVRIGHTSHIFT, BVLshr},
     {exprkind_t::BVSRSHIFT, BVAshr},
@@ -244,7 +245,13 @@ Op StpTerm::get_op() const
     auto it = type2primop.find(k);
     if (it != type2primop.end())
     {
-      return Op(it->second);
+      PrimOp po = it->second;
+      
+      // For indexed operations, STP doesn't provide direct access to indices
+      // Return the basic operation without indices
+      // This is a limitation of the STP C interface
+      
+      return Op(po);
     }
     else
     {
@@ -443,9 +450,12 @@ std::string StpTerm::print_value_as(SortKind sk)
         return "true";
       } else if (k == FALSE) {
         return "false";
-      } else {
-        // For other boolean expressions (e.g., BVCONST of width 1)
+      } else if (k == BVCONST) {
+        // For BVCONST of width 1
         return getBVUnsigned(expr) ? "true" : "false";
+      } else {
+        // For non-constant expressions, we can't extract a value
+        throw IncorrectUsageException("Cannot print non-constant expression as boolean value");
       }
     }
     else if (sk == BV) {
@@ -496,7 +506,8 @@ std::string StpTerm::print_value_as(SortKind sk)
         std::string result = "(_ bv" + std::to_string(val) + " " + std::to_string(width) + ")";
         return result;
       } else {
-        return std::to_string(getBVUnsigned(expr));
+        // For non-constant expressions, we can't extract a value
+        throw IncorrectUsageException("Cannot print non-constant expression as bitvector value");
       }
     }
   } catch (const std::exception& e) {

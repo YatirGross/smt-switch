@@ -44,6 +44,22 @@ class UnitTests : public ::testing::Test,
 
     boolsort = s->make_sort(BOOL);
     bvsort = s->make_sort(BV, 4);
+  }
+  SmtSolver s;
+  Sort boolsort, bvsort;
+};
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(UnitFunctionTests);
+class UnitFunctionTests : public ::testing::Test,
+                          public ::testing::WithParamInterface<SolverConfiguration>
+{
+ protected:
+  void SetUp() override
+  {
+    s = create_solver(GetParam());
+
+    boolsort = s->make_sort(BOOL);
+    bvsort = s->make_sort(BV, 4);
     funsort = s->make_sort(FUNCTION, SortVec{ bvsort, bvsort });
   }
   SmtSolver s;
@@ -62,7 +78,7 @@ TEST_P(UnitPrimOpTests, ToString)
   ASSERT_NO_THROW(::smt::to_string(po));
 }
 
-TEST_P(UnitTests, FunOp)
+TEST_P(UnitFunctionTests, FunOp)
 {
   Term x = s->make_symbol("x", bvsort);
   Term f = s->make_symbol("f", funsort);
@@ -107,7 +123,7 @@ TEST_P(UnitTests, RotateOps)
   ASSERT_TRUE(r.is_unsat());
 }
 
-TEST_P(UnitTests, BoolFun)
+TEST_P(UnitFunctionTests, BoolFun)
 {
   Term b = s->make_symbol("b", boolsort);
   Sort boolfunsort = s->make_sort(FUNCTION, SortVec{ boolsort, boolsort });
@@ -115,7 +131,7 @@ TEST_P(UnitTests, BoolFun)
   Term fb = s->make_term(Apply, f, b);
 }
 
-TEST_P(UnitTests, MultiArgFun)
+TEST_P(UnitFunctionTests, MultiArgFun)
 {
   SortVec argsorts(7, bvsort);
   // return sort
@@ -147,5 +163,9 @@ INSTANTIATE_TEST_SUITE_P(ParameterizedPrimOp,
 INSTANTIATE_TEST_SUITE_P(ParameterizedSolverUnit,
                          UnitTests,
                          testing::ValuesIn(filter_solver_configurations({ TERMITER })));
+
+INSTANTIATE_TEST_SUITE_P(ParameterizedSolverUnitFunction,
+                         UnitFunctionTests,
+                         testing::ValuesIn(filter_solver_configurations({ TERMITER, THEORY_UF })));
 
 }  // namespace smt_tests

@@ -5,7 +5,21 @@ namespace smt {
 
 std::size_t StpSort::hash() const
 {
-  return reinterpret_cast<size_t>(type);
+  type_t type_kind = getType(type);
+  std::size_t hash = static_cast<std::size_t>(type_kind);
+  
+  if (type_kind == BITVECTOR_TYPE)
+  {
+    hash ^= vc_getValueSize(vc, type);
+  }
+  else if (type_kind == ARRAY_TYPE)
+  {
+    // For arrays, hash the index and element sizes
+    hash ^= vc_getIndexSize(vc, type);
+    hash ^= vc_getValueSize(vc, type);
+  }
+  
+  return hash;
 }
 
 uint64_t StpSort::get_width() const
