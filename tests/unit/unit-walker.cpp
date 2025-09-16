@@ -20,6 +20,7 @@
 #include "available_solvers.h"
 #include "gtest/gtest.h"
 #include "identity_walker.h"
+#include "substitution_walker.h"
 #include "smt.h"
 #include "tree_walker.h"
 
@@ -165,10 +166,10 @@ TEST_P(UnitWalkerTests, ArraySubstitution)
   Term arrx_0 = s->make_term(Select, arr_0, x_0);
 
   UnorderedTermMap subs({ { x, x_0 }, { arr, arr_0 } });
-  IdentityWalker iw(s, false, &subs);
-  EXPECT_EQ(arrx_0, iw.visit(arrx));
+  SubstitutionWalker sw(s, subs);
+  EXPECT_EQ(arrx_0, sw.visit(arrx));
   // visit a second time
-  EXPECT_EQ(arrx_0, iw.visit(arrx));
+  EXPECT_EQ(arrx_0, sw.visit(arrx));
 }
 
 TEST_P(UnitFunctionWalkerTests, FunSubstitution)
@@ -938,5 +939,7 @@ INSTANTIATE_TEST_SUITE_P(
     ParametrizedUnitFunctionWalker,
     UnitFunctionWalkerTests,
     testing::ValuesIn(filter_solver_configurations({ TERMITER, THEORY_UF })));
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(UnitFunctionWalkerTests);
 
 }  // namespace smt_tests

@@ -31,7 +31,8 @@ class StpTermIter : public TermIterBase
 class StpTerm : public AbsTerm
 {
  public:
-  StpTerm(const Expr e, VC vc) : expr(e), vc(vc) {};
+  StpTerm(const Expr e, VC vc) : expr(e), vc(vc), stored_op() {};
+  StpTerm(const Expr e, VC vc, const Op & op) : expr(e), vc(vc), stored_op(op) {};
   ~StpTerm() {};
   std::size_t hash() const override;
   std::size_t get_id() const override;
@@ -51,6 +52,7 @@ class StpTerm : public AbsTerm
  protected:
   Expr expr;
   VC vc;
+  Op stored_op;  // Store the original Op for indexed operations
 
   friend class StpSolver;
 };
