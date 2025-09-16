@@ -637,7 +637,7 @@ Term StpSolver::make_term(const Op op, const Term & t) const
         Expr e = std::static_pointer_cast<StpTerm>(t)->expr;
         uint64_t high = op.idx0;
         uint64_t low = op.idx1;
-        return std::make_shared<StpTerm>(vc_bvExtract(vc, e, high, low), vc);
+        return std::make_shared<StpTerm>(vc_bvExtract(vc, e, high, low), vc, op);
     }
     
     // Special handling for Repeat operation
@@ -650,7 +650,7 @@ Term StpSolver::make_term(const Op op, const Term & t) const
         for (uint64_t i = 1; i < op.idx0; i++) {
             result = vc_bvConcatExpr(vc, e, result);
         }
-        return std::make_shared<StpTerm>(result, vc);
+        return std::make_shared<StpTerm>(result, vc, op);
     }
     
     // Special handling for Sign_Extend operation
@@ -674,7 +674,7 @@ Term StpSolver::make_term(const Op op, const Term & t) const
         }
         // Concatenate sign bits with original expression
         Expr result = vc_bvConcatExpr(vc, sign_bits, e);
-        return std::make_shared<StpTerm>(result, vc);
+        return std::make_shared<StpTerm>(result, vc, op);
     }
     
     // Special handling for Rotate_Left operation
@@ -703,7 +703,7 @@ Term StpSolver::make_term(const Op op, const Term & t) const
         Expr bottom_bits = vc_bvExtract(vc, e, width - n - 1, 0);
         // Concat: bottom_bits ++ top_bits
         Expr result = vc_bvConcatExpr(vc, bottom_bits, top_bits);
-        return std::make_shared<StpTerm>(result, vc);
+        return std::make_shared<StpTerm>(result, vc, op);
     }
     
     // Special handling for Rotate_Right operation
@@ -732,7 +732,21 @@ Term StpSolver::make_term(const Op op, const Term & t) const
         Expr bottom_n_bits = vc_bvExtract(vc, e, n - 1, 0);
         // Concat: bottom_n_bits ++ top_bits
         Expr result = vc_bvConcatExpr(vc, bottom_n_bits, top_bits);
-        return std::make_shared<StpTerm>(result, vc);
+        return std::make_shared<StpTerm>(result, vc, op);
+    }
+    
+    // Zero_Extend operation
+    if (op.prim_op == Zero_Extend) {
+        if (op.idx0 < 0) {
+            throw IncorrectUsageException("Can't zero extend by negative number");
+        }
+        if (op.idx0 == 0) {
+            return t;
+        }
+        Expr e = std::static_pointer_cast<StpTerm>(t)->expr;
+        Expr zero_bits = vc_bvConstExprFromInt(vc, op.idx0, 0);
+        Expr result = vc_bvConcatExpr(vc, zero_bits, e);
+        return std::make_shared<StpTerm>(result, vc, op);
     }
     
     if (!primop2kind.count(op.prim_op))
@@ -777,7 +791,7 @@ Term StpSolver::make_term(const Op op, const Term & t0, const Term & t1) const
                 throw InternalSolverException("Null result from array select operation");
             }
             
-            return std::make_shared<StpTerm>(result, vc);
+            return std::make_shared<StpTerm>(result, vc, op);
         } catch (const std::exception& e) {
             throw InternalSolverException(std::string("Error in array select operation: ") + e.what());
         }
@@ -915,7 +929,7 @@ Term StpSolver::make_term(const Op op, const Term & t0, const Term & t1, const T
                 throw InternalSolverException("Null result from array store operation");
             }
             
-            return std::make_shared<StpTerm>(result, vc);
+            return std::make_shared<StpTerm>(result, vc, op);
         } catch (const std::exception& e) {
             throw InternalSolverException(std::string("Error in array store operation: ") + e.what());
         }

@@ -1,9 +1,9 @@
 #include "stp_term.h"
 #include "stp_solver.h"
-#include <cstring>  // For strcmp
 #include "stp_sort.h"
-#include <functional>  // For std::hash
-#include <iostream>  // For std::cout
+#include <cstring>
+#include <functional>
+#include <iostream>
 
 namespace smt {
 
@@ -81,7 +81,7 @@ const std::unordered_map<exprkind_t, PrimOp> type2primop({
     {exprkind_t::BVSLT, BVSlt},
     {exprkind_t::BVSLE, BVSle},
     {exprkind_t::BVSGT, BVSgt},
-    {exprkind_t::BVSGE, BVSge}
+    {exprkind_t::BVSGE, BVSge},
 });
 
 
@@ -190,37 +190,28 @@ bool StpTerm::compare(const Term & absterm) const
       return true;
     }
     
-    // Compare expressions by their IDs first (fast path)
+    // Fast path: compare by expression IDs
     std::size_t id1 = getExprID(expr);
     std::size_t id2 = getExprID(st->expr);
-    
     if (id1 == id2) {
       return true;
     }
-    
-    // For different contexts or different IDs, compare canonical string representations
-    // This is much simpler and more reliable than structural comparison
+
+    // Fall back to string comparison
     char* buf1 = nullptr;
     char* buf2 = nullptr;
     unsigned long len1 = 0, len2 = 0;
     
-    // Get string representation of first expression
     vc_printExprToBuffer(vc, expr, &buf1, &len1);
-    
-    // Get string representation of second expression  
     vc_printExprToBuffer(st->vc, st->expr, &buf2, &len2);
     
     bool result = false;
     if (buf1 && buf2) {
-      // Normalize strings before comparison to handle formatting differences
       std::string str1 = normalize_stp_string(buf1);
       std::string str2 = normalize_stp_string(buf2);
-      
-      // Compare the normalized strings
       result = (str1 == str2);
     }
     
-    // Clean up allocated buffers
     if (buf1) free(buf1);
     if (buf2) free(buf2);
     
@@ -239,6 +230,11 @@ Op StpTerm::get_op() const
     return Op();
   }
 
+  // Return stored Op for indexed operations
+  if (stored_op.prim_op != NUM_OPS_AND_NULL) {
+    return stored_op;
+  }
+
   try
   {
     enum exprkind_t k = getExprKind(expr);
@@ -246,11 +242,6 @@ Op StpTerm::get_op() const
     if (it != type2primop.end())
     {
       PrimOp po = it->second;
-      
-      // For indexed operations, STP doesn't provide direct access to indices
-      // Return the basic operation without indices
-      // This is a limitation of the STP C interface
-      
       return Op(po);
     }
     else
