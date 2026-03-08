@@ -6,6 +6,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
 
 macro(switch_add_stp_test name)
   add_executable(${name} "${PROJECT_SOURCE_DIR}/tests/stp/${name}.cpp")
+  target_link_libraries(${name} smt-switch-stp)
   target_link_libraries(${name} gtest gtest_main)
   target_link_libraries(${name} test-deps)
   add_test(NAME ${name}_test COMMAND ${name})
