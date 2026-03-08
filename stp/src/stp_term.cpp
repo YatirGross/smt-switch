@@ -400,6 +400,39 @@ uint64_t StpTerm::to_int() const
   throw IncorrectUsageException("Term is not a constant");
 }
 
+// Helper function to check if an operation may be optimized away by STP
+// These operations need special handling because STP may return the child
+// expression directly instead of creating a node for the operation
+// TODO: add other operations as needed
+static bool mayBeOptimizedAway(PrimOp op) {
+  switch (op) {
+    case Extract:
+      // Extract may be optimized away
+      return true;
+    default:
+      return false;
+  }
+}
+
+// Helper function to get the number of real term children (excluding indices)
+static uint32_t getNumRealChildren(Expr expr) {
+  if (!expr) return 0;
+
+  exprkind_t kind = getExprKind(expr);
+
+  // For indexed operations, STP internally stores indices as additional children
+  // but we only want to iterate over the real term children
+  switch (kind) {
+    case exprkind_t::BVEXTRACT:
+      // Extract has 1 real child (the expression) + 2 indices (high, low)
+      // getDegree returns 3, but we only want 1
+      return 1;
+    default:
+      // For all other operations, return the actual degree
+      return getDegree(expr);
+  }
+}
+
 TermIter StpTerm::begin()
 {
   if (!expr) {
@@ -420,7 +453,14 @@ TermIter StpTerm::end()
   }
   
   try {
-    return TermIter(new StpTermIter(expr, vc, getDegree(expr)));
+    // For operations that STP may optimize away (currently only Extract)
+    if (stored_op.prim_op != NUM_OPS_AND_NULL &&
+        mayBeOptimizedAway(stored_op.prim_op)) {
+        return TermIter(new StpTermIter(expr, vc, 1));
+    }
+
+    // For all other operations, check the actual expression structure
+    return TermIter(new StpTermIter(expr, vc, getNumRealChildren(expr)));
   } catch (const std::exception& e) {
     throw IncorrectUsageException(std::string("Error creating end iterator: ") + e.what());
   }
